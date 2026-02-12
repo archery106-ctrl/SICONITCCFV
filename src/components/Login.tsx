@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { supabase } from '../lib/supabaseClient'; // Importamos la conexión
+import { supabase } from '../lib/supabaseClient';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -11,7 +11,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('teacher');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Estado para feedback visual
+  const [loading, setLoading] = useState(false);
 
   const LOGO = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
 
@@ -21,60 +21,57 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      // 1. Lógica de Administrador Maestro (Hardcoded)
+      // 1. Lógica de Administrador Maestro (Puerta de emergencia)
       if (role === 'administrator' && email === 'archery106@gmail.com' && password === 'admin1234') {
         onLogin({ email, name: 'Administrador Principal', role: 'administrator', cargo: 'Rectoría' });
         return;
       }
 
-      // 2. Intento de Login con Supabase Auth
+      // 2. Intento de Login con Supabase Auth Oficial
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) {
-        // Si falla Auth, verificamos si existe en las tablas manuales de Supabase (por si no usas Auth)
-        const { data: profile, error: dbError } = await supabase
-          .from('perfiles_usuarios')
-          .select('*')
-          .eq('email', email)
-          .single();
-
-        if (profile) {
-          // Aquí podrías validar contraseña manualmente si no usas Auth de Supabase
-          // Pero lo ideal es usar Auth. Por ahora, si no hay Auth, lanzamos el error:
-          throw new Error('Credenciales incorrectas o usuario no autorizado.');
-        } else {
-          throw new Error('Usuario no encontrado en el sistema de la institución.');
-        }
+        throw new Error('Las credenciales ingresadas no son válidas para la institución.');
       }
 
       if (data.user) {
-        // 3. Obtener perfil extendido desde la tabla que creamos
-        const { data: profile } = await supabase
+        // 3. Obtener perfil detallado desde la tabla perfiles_usuarios
+        const { data: profile, error: profileError } = await supabase
           .from('perfiles_usuarios')
           .select('*')
           .eq('id', data.user.id)
           .single();
 
+        if (profileError || !profile) {
+          throw new Error('Usuario autenticado pero sin perfil registrado en el sistema.');
+        }
+
+        // 4. Validación de Rol (Evita que un docente entre con la pestaña de Admin seleccionada)
+        if (profile.rol !== role) {
+          throw new Error(`Este usuario no tiene permisos de ${role === 'administrator' ? 'Administrador' : 'Docente'}.`);
+        }
+
         onLogin({
           email: data.user.email || '',
-          name: profile?.nombre_completo || 'Usuario SICONITCC',
-          role: profile?.rol || (role as any),
-          cargo: profile?.rol === 'administrator' ? 'Rectoría' : 'Docente'
+          name: profile.nombre_completo || 'Usuario SICONITCC',
+          role: profile.rol,
+          cargo: profile.rol === 'administrator' ? 'Personal Directivo' : 'Docente de Aula'
         });
       }
 
     } catch (err: any) {
-      setError(err.message || 'Error de conexión con el servidor.');
+      setError(err.message || 'Error de conexión con el servidor institucional.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-school-green relative px-4 overflow-hidden">
+    <div className="h-screen flex flex-col items-center justify-center bg-school-green relative px-4 overflow-hidden font-sans">
+      {/* Fondo Animado */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-school-yellow opacity-20 blur-[120px] rounded-full animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-school-green-dark opacity-40 blur-[150px] rounded-full animate-pulse"></div>
@@ -84,7 +81,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="text-center mb-8">
           <div className="relative inline-block mb-6">
             <div className="absolute inset-0 bg-school-yellow opacity-30 blur-xl rounded-full scale-150"></div>
-            <img src={LOGO} className="h-28 mx-auto relative z-10 drop-shadow-2xl" alt="Logo" />
+            <img src={LOGO} className="h-28 mx-auto relative z-10 drop-shadow-2xl" alt="Logo IED Capellanía" />
           </div>
           <h1 className="text-xl font-black text-school-green-dark leading-tight uppercase tracking-tight">
             I.E.D. INSTITUTO TÉCNICO COMERCIAL DE CAPELLANÍA
@@ -96,18 +93,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
         </div>
 
+        {/* Selector de Rol */}
         <div className="flex gap-4 mb-8">
           <button 
             type="button"
             onClick={() => setRole('administrator')}
-            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${role === 'administrator' ? 'bg-school-yellow text-school-green-dark shadow-lg scale-105 border-2 border-school-yellow-dark' : 'bg-slate-50 text-slate-400 border-2 border-transparent'}`}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${role === 'administrator' ? 'bg-school-yellow text-school-green-dark shadow-lg scale-105 border-2 border-school-yellow-dark' : 'bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-slate-100'}`}
           >
             <i className="fas fa-user-shield mb-1 block text-lg"></i> Administrador
           </button>
           <button 
             type="button"
             onClick={() => setRole('teacher')}
-            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${role === 'teacher' ? 'bg-school-yellow text-school-green-dark shadow-lg scale-105 border-2 border-school-yellow-dark' : 'bg-slate-50 text-slate-400 border-2 border-transparent'}`}
+            className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${role === 'teacher' ? 'bg-school-yellow text-school-green-dark shadow-lg scale-105 border-2 border-school-yellow-dark' : 'bg-slate-50 text-slate-400 border-2 border-transparent hover:bg-slate-100'}`}
           >
             <i className="fas fa-chalkboard-teacher mb-1 block text-lg"></i> Docente
           </button>
@@ -121,7 +119,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               required 
               value={email} 
               onChange={e => setEmail(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50/50 border-2 border-transparent focus:border-school-green outline-none font-bold text-slate-700 transition-all"
+              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50/50 border-2 border-transparent focus:border-school-green outline-none font-bold text-slate-700 transition-all placeholder:text-slate-300"
               placeholder="Correo Institucional"
               disabled={loading}
             />
@@ -133,15 +131,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               required 
               value={password} 
               onChange={e => setPassword(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50/50 border-2 border-transparent focus:border-school-green outline-none font-bold text-slate-700 transition-all"
+              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50/50 border-2 border-transparent focus:border-school-green outline-none font-bold text-slate-700 transition-all placeholder:text-slate-300"
               placeholder="Contraseña"
               disabled={loading}
             />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center animate-bounce border border-red-100">
-              {error}
+            <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-[9px] font-black uppercase tracking-widest text-center animate-shake border border-red-100">
+              <i className="fas fa-exclamation-triangle mr-2"></i> {error}
             </div>
           )}
 
@@ -150,9 +148,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             disabled={loading}
             className={`w-full bg-school-green text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-school-green-dark transition-all transform hover:scale-[1.02] shadow-school-green/30 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {loading ? 'VERIFICANDO...' : 'ACCEDER AL SISTEMA'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <i className="fas fa-circle-notch animate-spin"></i> VERIFICANDO...
+              </span>
+            ) : 'ACCEDER AL SISTEMA'}
           </button>
         </form>
+      </div>
+      <div className="mt-8 text-white/40 font-black text-[9px] uppercase tracking-[0.5em] relative z-10">
+        IED Capellanía - Chiquinquirá © {new Date().getFullYear()}
       </div>
     </div>
   );
