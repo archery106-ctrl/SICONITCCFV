@@ -1,27 +1,54 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from './types';
+// Importaciones actualizadas a la carpeta interna src/components
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import { initializeDatabase } from './services/dbInitializer';
+import { supabase } from './lib/supabaseClient'; // Conexión a Supabase
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Logo oficial de la Institución
   const SCHOOL_IMG = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
 
   useEffect(() => {
-    // Inicialización automática de la base de datos
+    // 1. Inicialización de datos locales (Mantenido para compatibilidad)
     initializeDatabase();
 
-    // Check local storage for session
-    const savedUser = localStorage.getItem('siconitcc_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // 2. Revisar sesión en Supabase y LocalStorage
+    const checkSession = async () => {
+      const savedUser = localStorage.getItem('siconitcc_user');
+      
+      // Verificamos si hay una sesión activa en el cliente de Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      } else if (session?.user) {
+        // Si hay sesión en Supabase pero no en local (ej. después de un refresh profundo)
+        // Aquí podrías hacer un fetch al perfil si fuera necesario
+        console.log("Sesión detectada en Supabase");
+      }
+      
+      setLoading(false);
+    };
+
+    checkSession();
+
+    // Escuchar cambios en la autenticación (Login/Logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('siconitcc_user');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = (loggedUser: User) => {
@@ -29,7 +56,8 @@ const App: React.FC = () => {
     localStorage.setItem('siconitcc_user', JSON.stringify(loggedUser));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('siconitcc_user');
   };
@@ -48,7 +76,7 @@ const App: React.FC = () => {
         <div className="w-48 h-1.5 bg-white/20 rounded-full overflow-hidden relative">
            <div className="h-full bg-school-yellow animate-progress w-full"></div>
         </div>
-        <p className="mt-4 text-white font-black text-[10px] uppercase tracking-[0.3em] opacity-50">Sincronizando Base de Datos...</p>
+        <p className="mt-4 text-white font-black text-[10px] uppercase tracking-[0.3em] opacity-50">Sincronizando Base de Datos de Capellanía...</p>
       </div>
     );
   }
@@ -69,7 +97,7 @@ const App: React.FC = () => {
             />
             <div className="flex flex-col">
               <span className="text-sm text-school-yellow font-black uppercase tracking-[0.25em] leading-none mb-1">SICONITCC</span>
-              <h1 className="text-xs font-bold leading-tight tracking-tight opacity-90 hidden lg:block">INSTITUTO TÉCNICO COMERCIAL DE CAPELLANÍA</h1>
+              <h1 className="text-xs font-bold leading-tight tracking-tight opacity-90 hidden lg:block uppercase">I.E.D. Instituto Técnico Comercial de Capellanía</h1>
             </div>
           </div>
         </div>
@@ -87,7 +115,7 @@ const App: React.FC = () => {
             className="bg-school-yellow text-school-green-dark px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-black/10"
           >
             <i className="fas fa-sign-out-alt"></i>
-            <span>Cerrar Sesión</span>
+            <span>Salir</span>
           </button>
         </div>
       </header>
@@ -106,7 +134,7 @@ const App: React.FC = () => {
           className="h-6 w-6 grayscale opacity-30 mb-2" 
           alt="mini-logo" 
         />
-        <p>IED Instituto Técnico Comercial de Capellanía &copy; {new Date().getFullYear()}</p>
+        <p>IED Instituto Técnico Comercial de Capellanía © {new Date().getFullYear()}</p>
       </footer>
     </div>
   );
