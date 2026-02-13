@@ -1,219 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { Teacher, Course, AcademicArea, Subject } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import { User } from './types';
+// Corregido: Importación directa desde la carpeta lib dentro de src
+import Login from './components/Login';
+import AdminDashboard from './components/AdminDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
+import { initializeDatabase } from './services/dbInitializer';
+import { supabase } from './lib/supabaseClient'; 
 
-interface TeacherFormProps {
-  teachers: Teacher[];
-  setTeachers: (t: Teacher[]) => void;
-  courses: Course[];
-  areas: AcademicArea[];
-  subjects: Subject[];
-}
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, courses, areas, subjects }) => {
-  const [loading, setLoading] = useState(false);
-  const [sedes, setSedes] = useState<string[]>([]);
-  
-  // Estado para el Registro de Usuario (Auth)
-  const [reg, setReg] = useState({ 
-    name: '', 
-    email: '', 
-    password: '', 
-    document: '' 
-  });
-
-  // Estado para la Asignación Académica (Carga)
-  const [load, setLoad] = useState({ 
-    teacherId: '', 
-    areaId: '', 
-    subjectId: '', 
-    sede: '', 
-    grades: [] as string[], 
-    isDirector: false, 
-    directorGrade: '' 
-  });
+  // Logo oficial de la Institución
+  const SCHOOL_IMG = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
 
   useEffect(() => {
-    // Sincronización con las sedes configuradas en el sistema
-    const savedSedes = JSON.parse(localStorage.getItem('siconitcc_sedes') || '[]');
-    setSedes(savedSedes);
+    // 1. Inicialización de datos locales
+    initializeDatabase();
+
+    // 2. Revisar sesión en Supabase y LocalStorage
+    const checkSession = async () => {
+      const savedUser = localStorage.getItem('siconitcc_user');
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      } else if (session?.user && !error) {
+        const { data: profile } = await supabase
+          .from('perfiles_usuarios')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const userData: User = {
+            email: session.user.email || '',
+            name: profile.nombre_completo,
+            role: profile.rol,
+            cargo: profile.rol === 'administrator' ? 'Personal Directivo' : 'Docente'
+          };
+          setUser(userData);
+          localStorage.setItem('siconitcc_user', JSON.stringify(userData));
+        }
+      }
+      setLoading(false);
+    };
+
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('siconitcc_user');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const handleRegisterTeacher = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleLogin = (loggedUser: User) => {
+    setUser(loggedUser);
+    localStorage.setItem('siconitcc_user', JSON.stringify(loggedUser));
+  };
 
+  const handleLogout = async () => {
     try {
-      // 1. Crear cuenta en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: reg.email,
-        password: reg.password,
-        options: {
-          data: { full_name: reg.name, role: 'teacher' }
-        }
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // 2. Crear perfil en la tabla perfiles_usuarios
-        const { error: profileError } = await supabase
-          .from('perfiles_usuarios')
-          .insert([{
-            id: authData.user.id,
-            nombre_completo: reg.name,
-            documento: reg.document,
-            email: reg.email,
-            rol: 'teacher'
-          }]);
-
-        if (profileError) throw profileError;
-
-        alert('✅ Cuenta docente creada. Ahora asigne su carga académica abajo.');
-        setLoad(prev => ({ ...prev, teacherId: authData.user?.id || '' }));
-      }
-    } catch (err: any) {
-      alert("❌ Error en registro: " + err.message);
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Error signing out:", err);
     } finally {
-      setLoading(false);
+      setUser(null);
+      localStorage.removeItem('siconitcc_user');
     }
   };
 
-  const handleAssignLoad = async () => {
-    if (!load.teacherId || !load.subjectId || load.grades.length === 0) {
-      return alert("Debe seleccionar: Docente, Asignatura y al menos un Grado.");
-    }
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-school-green-dark">
+        <div className="relative mb-8">
+           <div className="animate-ping absolute inset-0 rounded-full bg-school-yellow opacity-20"></div>
+           <img 
+             src={SCHOOL_IMG} 
+             className="h-24 w-24 object-contain relative z-10 bg-white p-3 rounded-3xl shadow-2xl" 
+             alt="Cargando SICONITCC" 
+           />
+        </div>
+        <div className="w-48 h-1.5 bg-white/20 rounded-full overflow-hidden relative">
+           <div className="h-full bg-school-yellow animate-progress w-full"></div>
+        </div>
+        <p className="mt-4 text-white font-black text-[10px] uppercase tracking-[0.3em] opacity-50">Sincronizando con la Institución...</p>
+      </div>
+    );
+  }
 
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('carga_academica')
-        .insert([{
-          docente_id: load.teacherId,
-          area_id: load.areaId,
-          asignatura_id: load.subjectId,
-          sede: load.sede,
-          grados: load.grades,
-          es_director: load.isDirector,
-          grado_direccion: load.isDirector ? load.directorGrade : null
-        }]);
-
-      if (error) throw error;
-      alert('✅ Carga académica vinculada con éxito. El docente ya puede ingresar.');
-      
-      // Limpiar estados
-      setLoad({ teacherId: '', areaId: '', subjectId: '', sede: '', grades: [], isDirector: false, directorGrade: '' });
-      setReg({ name: '', email: '', password: '', document: '' });
-    } catch (err: any) {
-      alert("❌ Error al vincular: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleGrade = (grade: string) => {
-    setLoad(prev => ({
-      ...prev,
-      grades: prev.grades.includes(grade) 
-        ? prev.grades.filter(g => g !== grade) 
-        : [...prev.grades, grade]
-    }));
-  };
-
-  // FILTRADO DINÁMICO SEGÚN CONFIGURACIÓN DEL SISTEMA
-  const filteredCourses = load.sede ? courses.filter(c => c.sede === load.sede) : [];
-  const filteredSubjects = load.areaId ? subjects.filter(s => s.areaId === load.areaId) : [];
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
-    <div className="space-y-10 animate-fadeIn pb-24">
-      
-      {/* 1. REGISTRO DE CREDENCIALES */}
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-slate-100">
-        <h2 className="text-2xl font-black text-school-green-dark mb-8 uppercase flex items-center gap-4">
-          <span className="bg-school-green text-white w-10 h-10 rounded-2xl flex items-center justify-center text-lg">1</span>
-          Crear Credenciales Docente
-        </h2>
-        <form onSubmit={handleRegisterTeacher} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <input required placeholder="Cédula/Documento" className="p-4 border rounded-2xl bg-slate-50 font-bold" value={reg.document} onChange={e => setReg({...reg, document: e.target.value})} />
-          <input required placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-slate-50 font-bold" value={reg.name} onChange={e => setReg({...reg, name: e.target.value})} />
-          <input required type="email" placeholder="Email Institucional" className="p-4 border rounded-2xl bg-slate-50 font-bold" value={reg.email} onChange={e => setReg({...reg, email: e.target.value})} />
-          <input required type="password" placeholder="Contraseña" className="p-4 border rounded-2xl bg-slate-50 font-bold" value={reg.password} onChange={e => setReg({...reg, password: e.target.value})} />
-          <button disabled={loading} className="lg:col-span-4 bg-school-green text-white py-5 rounded-2xl font-black uppercase hover:bg-school-green-dark transition-all shadow-lg">
-            {loading ? 'GENERANDO ACCESO...' : 'Registrar Docente en el Sistema'}
-          </button>
-        </form>
-      </div>
-
-      {/* 2. ASIGNACIÓN ACADÉMICA DINÁMICA */}
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-slate-100 space-y-8">
-        <h2 className="text-2xl font-black text-school-green-dark uppercase flex items-center gap-4">
-          <span className="bg-school-yellow text-school-green-dark w-10 h-10 rounded-2xl flex items-center justify-center text-lg">2</span>
-          Asignación de Carga Académica
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* SEDE (Dinámica) */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Sede</label>
-            <select className="w-full p-4 border rounded-2xl bg-slate-50 font-bold" value={load.sede} onChange={e => setLoad({...load, sede: e.target.value, grades: []})}>
-              <option value="">Escoger Sede...</option>
-              {sedes.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          {/* ÁREA (Dinámica) */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Área Académica</label>
-            <select className="w-full p-4 border rounded-2xl bg-slate-50 font-bold" value={load.areaId} onChange={e => setLoad({...load, areaId: e.target.value, subjectId: ''})}>
-              <option value="">Escoger Área...</option>
-              {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
-
-          {/* ASIGNATURA (Filtrada por Área) */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Asignatura</label>
-            <select className="w-full p-4 border rounded-2xl bg-slate-50 font-bold disabled:opacity-50" value={load.subjectId} disabled={!load.areaId} onChange={e => setLoad({...load, subjectId: e.target.value})}>
-              <option value="">Seleccionar Materia...</option>
-              {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* GRADOS (Filtrados por Sede) */}
-        {load.sede && (
-          <div className="pt-6 border-t space-y-4">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Grados asignados en {load.sede}</label>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-              {filteredCourses.map(c => (
-                <button key={c.id} onClick={() => toggleGrade(c.grade)} className={`p-4 rounded-xl font-black text-xs uppercase border-2 transition-all ${load.grades.includes(c.grade) ? 'bg-school-green text-white border-school-green' : 'bg-white text-slate-400 border-slate-100 hover:border-school-green/30'}`}>
-                  {c.grade}
-                </button>
-              ))}
+    <div className="min-h-screen flex flex-col font-sans">
+      <header className="bg-school-green-dark text-white px-8 py-4 shadow-xl border-b border-white/5 sticky top-0 z-50 flex justify-between items-center">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 group cursor-pointer">
+            <img 
+              src={SCHOOL_IMG} 
+              alt="Escudo SICONITCC" 
+              className="h-12 w-12 object-contain bg-white rounded-2xl p-1.5 shadow-lg group-hover:scale-105 transition-transform"
+            />
+            <div className="flex flex-col">
+              <span className="text-sm text-school-yellow font-black uppercase tracking-[0.25em] leading-none mb-1">SICONITCC</span>
+              <h1 className="text-xs font-bold leading-tight tracking-tight opacity-90 hidden lg:block uppercase">I.E.D. Instituto Técnico Comercial de Capellanía</h1>
             </div>
           </div>
-        )}
-
-        {/* DIRECCIÓN DE GRUPO */}
-        <div className="pt-8 border-t flex flex-col md:flex-row items-center gap-6 bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
-          <label className="flex items-center gap-4 cursor-pointer">
-            <input type="checkbox" checked={load.isDirector} onChange={e => setLoad({...load, isDirector: e.target.checked})} className="w-6 h-6 accent-school-green" />
-            <span className="font-black text-sm uppercase text-slate-600">¿Es Director de Grupo?</span>
-          </label>
-          {load.isDirector && (
-            <select className="flex-grow p-4 border rounded-2xl bg-white font-bold" value={load.directorGrade} onChange={e => setLoad({...load, directorGrade: e.target.value})}>
-              <option value="">Seleccionar Grado de Dirección...</option>
-              {filteredCourses.map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
-            </select>
-          )}
         </div>
+        
+        <div className="flex items-center gap-6">
+          <div className="text-right hidden sm:block">
+            <p className="font-extrabold text-sm tracking-tight">{user.name}</p>
+            <div className="flex items-center justify-end gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${user.role === 'administrator' ? 'bg-blue-400' : 'bg-school-yellow'}`}></div>
+              <p className="text-[10px] opacity-75 font-black uppercase tracking-widest">
+                {user.role === 'administrator' ? 'Administrador' : 'Docente'}
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="bg-school-yellow text-school-green-dark px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-black/10"
+          >
+            <i className="fas fa-sign-out-alt"></i>
+            <span>Salir</span>
+          </button>
+        </div>
+      </header>
 
-        <button onClick={handleAssignLoad} disabled={loading} className="w-full bg-school-green-dark text-white py-6 rounded-[2.5rem] font-black uppercase shadow-2xl hover:scale-[1.01] transition-all">
-          Vincular Carga Académica Oficial
-        </button>
-      </div>
+      <main className="flex-grow bg-[#f0f4f8]">
+        {user.role === 'administrator' ? (
+          <AdminDashboard user={user} />
+        ) : (
+          <TeacherDashboard user={user} />
+        )}
+      </main>
+
+      <footer className="bg-white border-t border-slate-100 text-center p-8 text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] flex flex-col items-center gap-2">
+        <img 
+          src={SCHOOL_IMG} 
+          className="h-6 w-6 grayscale opacity-30 mb-2" 
+          alt="IED Capellanía" 
+        />
+        <p>IED Instituto Técnico Comercial de Capellanía © {new Date().getFullYear()}</p>
+      </footer>
     </div>
   );
 };
 
-export default TeacherForm;
+export default App;
