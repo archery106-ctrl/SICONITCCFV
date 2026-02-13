@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Student, Teacher, Course, AcademicArea, Subject } from '../types';
 import Sidebar from './Sidebar';
 import PiarGestor from './PiarGestor';
-import PiarManagement from './PiarManagement'; // Importación vital para separar seguimiento de inscripción
+// SE ELIMINÓ LA IMPORTACIÓN DE PIARMANAGEMENT PARA EVITAR ERROR DE BUILD
 import StatsView from './StatsView';
 import StudentForm from './StudentForm';
 import TeacherForm from './TeacherForm';
@@ -59,12 +59,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'passwords': return <PasswordManagement teachers={teachers} />;
       case 'about-us': return <AboutUs />;
       
-      // RESTAURACIÓN DEL FLUJO PIAR: Separación por sub-pestañas
+      // UNIFICACIÓN DEL FLUJO PIAR EN UN SOLO COMPONENTE
       case 'piar-enroll':
-        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
       case 'piar-follow':
       case 'piar-review':
-        return <PiarManagement students={students} />;
+        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
         
       default:
         return <WelcomeView user={user} setActiveTab={setActiveTab} />;
@@ -138,7 +137,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   );
 };
 
-// --- FORMULARIO DE ADMINISTRADORES (SIN CAMBIOS EN LÓGICA) ---
+// --- EL RESTO DEL CÓDIGO (InsertAdminForm, AboutUs, WelcomeView) PERMANECE IGUAL ---
 const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
   const [data, setData] = useState({ name: '', cargo: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
