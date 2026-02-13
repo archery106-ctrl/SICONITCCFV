@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Student, Teacher, Course, AcademicArea, Subject } from '../types';
 import Sidebar from './Sidebar';
 import PiarGestor from './PiarGestor';
+import PiarManagement from './PiarManagement'; // Importación vital para separar seguimiento de inscripción
 import StatsView from './StatsView';
 import StudentForm from './StudentForm';
 import TeacherForm from './TeacherForm';
@@ -9,7 +10,7 @@ import CourseForm from './CourseForm';
 import AnnotationAdmin from './AnnotationAdmin';
 import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
-import { supabase } from '../lib/supabaseClient'; // Preparado para la base de datos
+import { supabase } from '../lib/supabaseClient';
 
 interface AdminDashboardProps {
   user: User;
@@ -26,7 +27,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [areas, setAreas] = useState<AcademicArea[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   
-  // Lista de sedes institucionales
   const [sedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
 
   useEffect(() => {
@@ -58,10 +58,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'stats': return <StatsView />;
       case 'passwords': return <PasswordManagement teachers={teachers} />;
       case 'about-us': return <AboutUs />;
+      
+      // RESTAURACIÓN DEL FLUJO PIAR: Separación por sub-pestañas
       case 'piar-enroll':
+        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
       case 'piar-follow':
       case 'piar-review':
-        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
+        return <PiarManagement students={students} />;
+        
       default:
         return <WelcomeView user={user} setActiveTab={setActiveTab} />;
     }
@@ -134,12 +138,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   );
 };
 
-// --- FORMULARIO DE ADMINISTRADORES CON LISTA INTEGRADA ---
+// --- FORMULARIO DE ADMINISTRADORES (SIN CAMBIOS EN LÓGICA) ---
 const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
   const [data, setData] = useState({ name: '', cargo: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
 
-  // Filtrar solo los administradores registrados
   const admins = teachers.filter(t => (t as any).rol === 'administrator' || (t as any).role === 'administrator');
 
   const handleSave = async (e: React.FormEvent) => {
@@ -173,7 +176,6 @@ const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
         if (profileError) throw profileError;
       }
 
-      // Sincronización LocalStorage
       const localAdmins = JSON.parse(localStorage.getItem('siconitcc_admins') || '[]');
       localAdmins.push(data);
       localStorage.setItem('siconitcc_admins', JSON.stringify(localAdmins));
@@ -218,7 +220,6 @@ const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
         </form>
       </div>
 
-      {/* LISTA DE ADMINISTRADORES INTEGRADA */}
       <div className="bg-amber-50 p-10 rounded-[2.5rem] border border-amber-200">
         <h2 className="text-2xl font-black text-amber-800 mb-6 uppercase tracking-tight italic">Administradores Registrados</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -234,7 +235,7 @@ const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
               </div>
             </div>
           )) : (
-            <p className="text-amber-600 italic font-bold">Cargando administradores...</p>
+            <p className="text-amber-600 italic font-bold text-xs">Sincronizando directivos...</p>
           )}
         </div>
       </div>
