@@ -100,96 +100,112 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     }));
   };
 
-  // Filtrado de listas
+  // --- LÓGICA DE FILTRADO ESTRICTO ---
+  // Filtramos la lista general de 'teachers' por el campo 'rol' de la base de datos
   const admins = teachers.filter(t => (t as any).rol === 'administrator');
   const docentesParaCarga = teachers.filter(t => (t as any).rol === 'teacher');
+  
   const filteredCourses = load.sede ? courses.filter(c => c.sede === load.sede) : [];
   const filteredSubjects = load.areaId ? subjects.filter(s => s.areaId === load.areaId) : [];
 
   return (
     <div className="space-y-10 animate-fadeIn pb-24">
       
-      {/* BLOQUE 1: REGISTRO DE PERSONAL (DOCENTE O ADMIN) */}
+      {/* BLOQUE 1: REGISTRO DE PERSONAL */}
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
         <h2 className="text-3xl font-black text-school-green-dark mb-10 uppercase tracking-tight">1. Registrar Nuevo Personal</h2>
         <form onSubmit={handleRegisterUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <input required placeholder="Documento" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={reg.document} onChange={e => setReg({...reg, document: e.target.value})} />
-          <input required placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={reg.name} onChange={e => setReg({...reg, name: e.target.value})} />
-          <input required type="email" placeholder="Email Institucional" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={reg.email} onChange={e => setReg({...reg, email: e.target.value})} />
-          <input required type="password" placeholder="Contraseña" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={reg.password} onChange={e => setReg({...reg, password: e.target.value})} />
-          <select className="p-4 border rounded-2xl bg-amber-50 font-black text-amber-700" value={reg.role} onChange={e => setReg({...reg, role: e.target.value as any})}>
+          <input required placeholder="Documento" className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={reg.document} onChange={e => setReg({...reg, document: e.target.value})} />
+          <input required placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={reg.name} onChange={e => setReg({...reg, name: e.target.value})} />
+          <input required type="email" placeholder="Email Institucional" className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={reg.email} onChange={e => setReg({...reg, email: e.target.value})} />
+          <input required type="password" placeholder="Contraseña" className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={reg.password} onChange={e => setReg({...reg, password: e.target.value})} />
+          <select className="p-4 border rounded-2xl bg-amber-50 font-black text-amber-700 outline-none" value={reg.role} onChange={e => setReg({...reg, role: e.target.value as any})}>
             <option value="teacher">ROL: DOCENTE</option>
             <option value="administrator">ROL: ADMINISTRADOR</option>
           </select>
-          <button disabled={loading} className="lg:col-span-1 bg-school-green text-white py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-school-green-dark">
+          <button disabled={loading} className="lg:col-span-1 bg-school-green text-white py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-school-green-dark transition-all active:scale-95">
             {loading ? '...' : 'Registrar'}
           </button>
         </form>
       </div>
 
-      {/* BLOQUE 2: LISTA DE ADMINISTRADORES (MÓDULO SOLICITADO) */}
-      <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-200">
-        <h2 className="text-2xl font-black text-amber-800 mb-6 uppercase tracking-tight">Directivos y Administradores Registrados</h2>
+      {/* BLOQUE 2: LISTA DE ADMINISTRADORES (Solo muestra admins) */}
+      <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-200 shadow-inner">
+        <h2 className="text-2xl font-black text-amber-800 mb-6 uppercase tracking-tight italic">Directivos y Administradores Registrados</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {admins.length > 0 ? admins.map(admin => (
-            <div key={admin.id} className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100 flex items-center gap-4">
+            <div key={admin.id} className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100 flex items-center gap-4 hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center font-black">
-                {admin.name.charAt(0)}
+                {admin.name ? admin.name.charAt(0) : 'A'}
               </div>
-              <div>
-                <p className="font-bold text-gray-800">{admin.name}</p>
+              <div className="overflow-hidden">
+                <p className="font-bold text-gray-800 truncate">{admin.name}</p>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Administrador</p>
                 <p className="text-[10px] text-amber-600 truncate">{admin.email}</p>
               </div>
             </div>
           )) : (
-            <p className="text-amber-600 italic font-bold">No hay otros administradores registrados.</p>
+            <p className="text-amber-600/50 italic font-bold text-sm">No hay administradores adicionales registrados.</p>
           )}
         </div>
       </div>
 
-      {/* BLOQUE 3: ASIGNACIÓN DE CARGA (SOLO PARA DOCENTES) */}
+      {/* BLOQUE 3: ASIGNACIÓN DE CARGA (Solo muestra docentes) */}
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 space-y-8">
         <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight">3. Asignación de Carga Académica</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-2">
-            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2">Docente</label>
-            <select className="w-full p-4 border-2 border-school-green/10 rounded-2xl bg-white font-bold" value={load.teacherId} onChange={e => setLoad({...load, teacherId: e.target.value})}>
-              <option value="">Seleccionar docente...</option>
+            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1 block">Seleccionar Docente para Clase</label>
+            <select className="w-full p-4 border-2 border-school-green/10 rounded-2xl bg-white font-bold outline-none focus:border-school-green" value={load.teacherId} onChange={e => setLoad({...load, teacherId: e.target.value})}>
+              <option value="">Buscar en la planta docente...</option>
               {docentesParaCarga.map(t => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
           </div>
-          <select className="p-4 border rounded-2xl bg-gray-50 font-bold mt-6" value={load.sede} onChange={e => setLoad({...load, sede: e.target.value, grades: []})}>
-            <option value="">Sede...</option>
-            {sedes.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select className="p-4 border rounded-2xl bg-gray-50 font-bold mt-6" value={load.areaId} onChange={e => setLoad({...load, areaId: e.target.value})}>
-            <option value="">Área...</option>
-            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-2">Sede</label>
+            <select className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none" value={load.sede} onChange={e => setLoad({...load, sede: e.target.value, grades: []})}>
+              <option value="">Sede...</option>
+              {sedes.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-2">Área Académica</label>
+            <select className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none" value={load.areaId} onChange={e => setLoad({...load, areaId: e.target.value})}>
+              <option value="">Área...</option>
+              {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <select className="p-4 border rounded-2xl bg-gray-50 font-bold" value={load.subjectId} disabled={!load.areaId} onChange={e => setLoad({...load, subjectId: e.target.value})}>
-            <option value="">Asignatura...</option>
-            {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-2">Asignatura</label>
+            <select className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none disabled:opacity-50" value={load.subjectId} disabled={!load.areaId} onChange={e => setLoad({...load, subjectId: e.target.value})}>
+              <option value="">Seleccione materia...</option>
+              {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
         </div>
 
         {load.sede && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 pt-6 border-t">
-            {filteredCourses.map(c => (
-              <button key={c.id} type="button" onClick={() => toggleGrade(c.grade)} className={`p-4 rounded-xl font-black text-[10px] uppercase border-2 ${load.grades.includes(c.grade) ? 'bg-school-green text-white border-school-green shadow-md' : 'bg-white text-gray-400 border-gray-100'}`}>
-                {c.grade}
-              </button>
-            ))}
+          <div className="pt-6 border-t border-gray-100">
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-2 mb-4 block italic">Vincular Grados de {load.sede}:</label>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              {filteredCourses.map(c => (
+                <button key={c.id} type="button" onClick={() => toggleGrade(c.grade)} className={`p-4 rounded-xl font-black text-[10px] uppercase border-2 transition-all ${load.grades.includes(c.grade) ? 'bg-school-green text-white border-school-green shadow-lg scale-105' : 'bg-white text-gray-400 border-gray-100 hover:border-school-green/30'}`}>
+                  {c.grade}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        <button onClick={handleAssignLoad} className="w-full bg-school-green-dark text-white py-6 rounded-[2.5rem] font-black uppercase shadow-2xl transition-transform hover:scale-[1.01]">
-          Vincular Carga Académica Oficial
+        <button onClick={handleAssignLoad} className="w-full bg-school-green-dark text-white py-6 rounded-[2.5rem] font-black uppercase shadow-2xl transition-all hover:bg-black active:scale-[0.98]">
+          Confirmar y Vincular Carga Académica
         </button>
       </div>
     </div>
