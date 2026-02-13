@@ -44,7 +44,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'insert-admin': return <InsertAdminForm />;
+      case 'insert-admin': return <InsertAdminForm teachers={teachers} />;
       case 'insert-student': 
         return <StudentForm 
                   courses={courses} 
@@ -134,17 +134,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   );
 };
 
-// --- FORMULARIO DE ADMINISTRADORES ACTUALIZADO PARA SUPABASE ---
-const InsertAdminForm = () => {
+// --- FORMULARIO DE ADMINISTRADORES CON LISTA INTEGRADA ---
+const InsertAdminForm = ({ teachers }: { teachers: Teacher[] }) => {
   const [data, setData] = useState({ name: '', cargo: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
+
+  // Filtrar solo los administradores registrados
+  const admins = teachers.filter(t => (t as any).rol === 'administrator' || (t as any).role === 'administrator');
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // 1. Guardar en Supabase Auth y Tabla de perfiles
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -171,13 +173,14 @@ const InsertAdminForm = () => {
         if (profileError) throw profileError;
       }
 
-      // 2. Mantener compatibilidad con local por ahora
-      const admins = JSON.parse(localStorage.getItem('siconitcc_admins') || '[]');
-      admins.push(data);
-      localStorage.setItem('siconitcc_admins', JSON.stringify(admins));
+      // Sincronización LocalStorage
+      const localAdmins = JSON.parse(localStorage.getItem('siconitcc_admins') || '[]');
+      localAdmins.push(data);
+      localStorage.setItem('siconitcc_admins', JSON.stringify(localAdmins));
       
-      alert('Administrador guardado exitosamente en la base de datos de Capellanía.');
+      alert('Administrador guardado exitosamente.');
       setData({ name: '', cargo: '', email: '', password: '' });
+      window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -186,32 +189,55 @@ const InsertAdminForm = () => {
   };
 
   return (
-    <div className="bg-white p-10 rounded-[2.5rem] shadow-premium border border-gray-100 animate-fadeIn">
-      <h2 className="text-3xl font-black text-school-green-dark mb-8 uppercase tracking-tight">Registro Administrador</h2>
-      <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Apellidos y Nombres</label>
-          <input required type="text" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.name} onChange={e => setData({...data, name: e.target.value})} />
+    <div className="space-y-8 animate-fadeIn">
+      <div className="bg-white p-10 rounded-[2.5rem] shadow-premium border border-gray-100">
+        <h2 className="text-3xl font-black text-school-green-dark mb-8 uppercase tracking-tight">Registro Administrador</h2>
+        <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Apellidos y Nombres</label>
+            <input required type="text" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.name} onChange={e => setData({...data, name: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Cargo</label>
+            <input required type="text" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.cargo} onChange={e => setData({...data, cargo: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Correo Institucional</label>
+            <input required type="email" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.email} onChange={e => setData({...data, email: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Contraseña</label>
+            <input required type="password" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.password} onChange={e => setData({...data, password: e.target.value})} />
+          </div>
+          <button 
+            disabled={loading}
+            className="md:col-span-2 bg-school-green text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-school-green-dark transition-all transform hover:scale-[1.01]"
+          >
+            {loading ? 'GUARDANDO...' : 'Guardar Registro'}
+          </button>
+        </form>
+      </div>
+
+      {/* LISTA DE ADMINISTRADORES INTEGRADA */}
+      <div className="bg-amber-50 p-10 rounded-[2.5rem] border border-amber-200">
+        <h2 className="text-2xl font-black text-amber-800 mb-6 uppercase tracking-tight italic">Administradores Registrados</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {admins.length > 0 ? admins.map((admin: any) => (
+            <div key={admin.id} className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100 flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center font-black">
+                {admin.nombre_completo?.charAt(0) || admin.name?.charAt(0)}
+              </div>
+              <div className="overflow-hidden">
+                <p className="font-bold text-gray-800 truncate">{admin.nombre_completo || admin.name}</p>
+                <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest">Personal Directivo</p>
+                <p className="text-[10px] text-gray-400 truncate">{admin.email}</p>
+              </div>
+            </div>
+          )) : (
+            <p className="text-amber-600 italic font-bold">Cargando administradores...</p>
+          )}
         </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Cargo</label>
-          <input required type="text" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.cargo} onChange={e => setData({...data, cargo: e.target.value})} />
-        </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Correo Institucional</label>
-          <input required type="email" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.email} onChange={e => setData({...data, email: e.target.value})} />
-        </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Contraseña</label>
-          <input required type="password" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green" value={data.password} onChange={e => setData({...data, password: e.target.value})} />
-        </div>
-        <button 
-          disabled={loading}
-          className="md:col-span-2 bg-school-green text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-school-green-dark transition-all transform hover:scale-[1.01]"
-        >
-          {loading ? 'GUARDANDO...' : 'Guardar Registro'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 };

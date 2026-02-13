@@ -1,195 +1,157 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Course, PiarRecord, CompetencyReport } from '../types';
+import { PiarRecord, CompetencyReport, Student } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
-interface PiarGestorProps {
-  activeSubTab: string;
+interface PiarManagementProps {
   students: Student[];
-  sedes: string[];
 }
 
-const PiarGestor: React.FC<PiarGestorProps> = ({ activeSubTab, students, sedes }) => {
-  const [selectedSede, setSelectedSede] = useState('');
-  const [selectedGrade, setSelectedGrade] = useState('');
-  const [selectedId, setSelectedId] = useState('');
-  const [courses, setCourses] = useState<Course[]>([]);
+const PiarManagement: React.FC<PiarManagementProps> = ({ students }) => {
+  const [activeTab, setActiveTab] = useState<'seguimiento' | 'revision'>('seguimiento');
   const [piarRecords, setPiarRecords] = useState<PiarRecord[]>([]);
+  const [competencyReports, setCompetencyReports] = useState<CompetencyReport[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  const [enrollData, setEnrollData] = useState<any>({
-    age: '', birthDate: '', deptVivienda: 'Cundinamarca', munVivienda: 'Fúquene',
-    address: '', neighborhood: '', phone: '', email: '',
-    isProtectionCenter: false, aspirantGrade: '',
-    isEthnicGroup: false, ethnicGroupName: '', isConflictVictim: false,
-    
-    // SECCIÓN SALUD COMPLETA
-    isHealthAffiliated: true, eps: '', regimen: 'Subsidiado', emergencyPlace: '',
-    isAttendedByHealth: false, healthFrequency: '',
-    hasMedicalDiagnosis: false, medicalDiagnosisWhat: '',
-    isAttendingTherapy: false, therapyDetails: '', therapyFrequency: '',
-    hasMedicalTreatment: false, medicalTreatmentWhat: '',
-    consumesMedication: false, medicationDetails: '',
-    hasSupportProducts: false, supportProductsWhat: '',
 
-    // SECCIÓN ENTORNO HOGAR COMPLETA
-    motherName: '', motherOccupation: '', motherEducation: 'Primaria',
-    fatherName: '', fatherOccupation: '', fatherEducation: 'Primaria',
-    caregiverName: '', caregiverRelation: '', caregiverEducation: 'Primaria', caregiverPhone: ''
-  });
-
+  // Mantenemos la lógica de carga inicial basada en la pestaña activa
   useEffect(() => {
-    setCourses(JSON.parse(localStorage.getItem('siconitcc_courses') || '[]'));
-    setPiarRecords(JSON.parse(localStorage.getItem('siconitcc_piar_records') || '[]'));
-  }, []);
+    fetchData();
+  }, [activeTab]);
 
-  // Autocompletado desde Supabase
-  useEffect(() => {
-    const fetchStudentData = async () => {
-      if (!selectedId) return;
-      setLoading(true);
-      const { data } = await supabase.from('estudiantes').select('*').eq('documento_identidad', selectedId).single();
-      if (data) {
-        setEnrollData(prev => ({
-          ...prev,
-          idType: data.id_type,
-          idNumber: data.documento_identidad,
-          email: data.email,
-          phone: data.phone,
-          motherName: data.mother_name,
-          fatherName: data.father_name,
-          aspirantGrade: data.grade
-        }));
-      }
-      setLoading(false);
-    };
-    fetchStudentData();
-  }, [selectedId]);
-
-  const handleEnroll = async () => {
-    if (!selectedId) return alert('Seleccione un estudiante.');
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('estudiantes').update({ is_piar: true, detalles_salud: enrollData }).eq('documento_identidad', selectedId);
-      if (error) throw error;
-      alert('¡Focalización exitosa!');
-      setSelectedId('');
-    } catch (err: any) { alert(err.message); } finally { setLoading(false); }
+      if (activeTab === 'seguimiento') {
+        const { data, error } = await supabase
+          .from('registros_piar')
+          .select('*')
+          .order('fecha', { ascending: false });
+        if (error) throw error;
+        setPiarRecords(data || []);
+      } else {
+        const { data, error } = await supabase
+          .from('informes_competencias')
+          .select('*')
+          .order('anio', { ascending: false });
+        if (error) throw error;
+        setCompetencyReports(data || []);
+      }
+    } catch (err: any) {
+      console.error("Error al sincronizar datos PIAR:", err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredGrades = selectedSede ? courses.filter(c => c.sede === selectedSede) : [];
-  const filteredStudents = selectedGrade ? students.filter(s => s.grade === selectedGrade && !s.isPiar) : [];
+  const handleVerify = async (id: string, table: string) => {
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ 
+          es_verificado: true,
+          gestor_observations: 'Validado por Administración - ' + new Date().toLocaleDateString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      alert("✅ Registro validado con éxito en el sistema.");
+      fetchData();
+    } catch (err: any) {
+      alert("Error en la validación: " + err.message);
+    }
+  };
 
-  const renderContent = () => {
-    if (activeSubTab !== 'piar-enroll') return <div className="p-10 text-center italic opacity-50">Módulo en desarrollo o revisión.</div>;
-
-    return (
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-12">
-        <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight">Anexo 1: Diagnóstico y Entorno</h2>
-
-        {/* SELECTORES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-6 rounded-[2rem]">
-          <select className="p-4 border rounded-2xl font-bold" value={selectedSede} onChange={e => setSelectedSede(e.target.value)}>
-            <option value="">Sede...</option>
-            {sedes.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select className="p-4 border rounded-2xl font-bold" value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
-            <option value="">Grado...</option>
-            {filteredGrades.map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
-          </select>
-          <select className="p-4 border rounded-2xl font-bold" value={selectedId} onChange={e => setSelectedId(e.target.value)}>
-            <option value="">Estudiante...</option>
-            {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-
-        {/* SECCIÓN SALUD DETALLADA */}
-        <div className="space-y-8 pt-6 border-t">
-          <h3 className="text-xl font-black text-gray-800 uppercase flex items-center gap-3">
-            <i className="fas fa-heartbeat text-school-green"></i> Información de Salud
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <input placeholder="EPS" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={enrollData.eps} onChange={e => setEnrollData({...enrollData, eps: e.target.value})} />
-            <input placeholder="Lugar Emergencia" className="p-4 border rounded-2xl bg-gray-50 font-bold" value={enrollData.emergencyPlace} onChange={e => setEnrollData({...enrollData, emergencyPlace: e.target.value})} />
-            
-            <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-school-green/5 p-6 rounded-[2rem] border border-school-green/10">
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 font-bold">
-                  <input type="checkbox" className="w-5 h-5" checked={enrollData.hasMedicalDiagnosis} onChange={e => setEnrollData({...enrollData, hasMedicalDiagnosis: e.target.checked})} />
-                  ¿Tiene diagnóstico médico?
-                </label>
-                {enrollData.hasMedicalDiagnosis && (
-                  <textarea placeholder="¿Cuál es el diagnóstico?" className="w-full p-4 border rounded-xl font-bold bg-white" value={enrollData.medicalDiagnosisWhat} onChange={e => setEnrollData({...enrollData, medicalDiagnosisWhat: e.target.value})} />
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 font-bold">
-                  <input type="checkbox" className="w-5 h-5" checked={enrollData.isAttendingTherapy} onChange={e => setEnrollData({...enrollData, isAttendingTherapy: e.target.checked})} />
-                  ¿Recibe terapias externas?
-                </label>
-                {enrollData.isAttendingTherapy && (
-                  <>
-                    <input placeholder="¿Qué terapias?" className="w-full p-4 border rounded-xl font-bold bg-white mb-2" value={enrollData.therapyDetails} onChange={e => setEnrollData({...enrollData, therapyDetails: e.target.value})} />
-                    <input placeholder="Frecuencia (ej: 2 veces/semana)" className="w-full p-4 border rounded-xl font-bold bg-white" value={enrollData.therapyFrequency} onChange={e => setEnrollData({...enrollData, therapyFrequency: e.target.value})} />
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="p-6 border rounded-2xl bg-gray-50">
-                  <label className="flex items-center gap-3 font-bold mb-3">
-                    <input type="checkbox" checked={enrollData.consumesMedication} onChange={e => setEnrollData({...enrollData, consumesMedication: e.target.checked})} />
-                    ¿Consume medicamentos?
-                  </label>
-                  {enrollData.consumesMedication && <input placeholder="Nombre y dosis del medicamento" className="w-full p-3 border rounded-xl" value={enrollData.medicationDetails} onChange={e => setEnrollData({...enrollData, medicationDetails: e.target.value})} />}
-               </div>
-               <div className="p-6 border rounded-2xl bg-gray-50">
-                  <label className="flex items-center gap-3 font-bold mb-3">
-                    <input type="checkbox" checked={enrollData.hasSupportProducts} onChange={e => setEnrollData({...enrollData, hasSupportProducts: e.target.checked})} />
-                    ¿Usa apoyos técnicos (Silla, audífonos, etc)?
-                  </label>
-                  {enrollData.hasSupportProducts && <input placeholder="Especifique el apoyo técnico" className="w-full p-3 border rounded-xl" value={enrollData.supportProductsWhat} onChange={e => setEnrollData({...enrollData, supportProductsWhat: e.target.value})} />}
-               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SECCIÓN ENTORNO HOGAR COMPLETA */}
-        <div className="space-y-8 pt-6 border-t">
-          <h3 className="text-xl font-black text-gray-800 uppercase flex items-center gap-3">
-            <i className="fas fa-home text-blue-500"></i> Entorno Hogar
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="p-8 bg-blue-50/30 rounded-[2.5rem] border border-blue-100 space-y-4">
-              <p className="font-black text-xs text-blue-600 uppercase">Datos de la Madre</p>
-              <input placeholder="Nombre" className="w-full p-4 border rounded-xl font-bold" value={enrollData.motherName} onChange={e => setEnrollData({...enrollData, motherName: e.target.value})} />
-              <input placeholder="Ocupación" className="w-full p-4 border rounded-xl font-bold" value={enrollData.motherOccupation} onChange={e => setEnrollData({...enrollData, motherOccupation: e.target.value})} />
-            </div>
-            <div className="p-8 bg-gray-50 rounded-[2.5rem] border space-y-4">
-              <p className="font-black text-xs text-gray-500 uppercase">Datos del Padre</p>
-              <input placeholder="Nombre" className="w-full p-4 border rounded-xl font-bold" value={enrollData.fatherName} onChange={e => setEnrollData({...enrollData, fatherName: e.target.value})} />
-              <input placeholder="Ocupación" className="w-full p-4 border rounded-xl font-bold" value={enrollData.fatherOccupation} onChange={e => setEnrollData({...enrollData, fatherOccupation: e.target.value})} />
-            </div>
-            <div className="md:col-span-2 p-8 bg-school-yellow/5 rounded-[2.5rem] border border-school-yellow/20 space-y-4">
-              <p className="font-black text-xs text-school-yellow-dark uppercase">Información del Cuidador / Parentesco</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input placeholder="Nombre Cuidador" className="p-4 border rounded-xl font-bold" value={enrollData.caregiverName} onChange={e => setEnrollData({...enrollData, caregiverName: e.target.value})} />
-                <input placeholder="Relación/Parentesco" className="p-4 border rounded-xl font-bold" value={enrollData.caregiverRelation} onChange={e => setEnrollData({...enrollData, caregiverRelation: e.target.value})} />
-                <input placeholder="Teléfono Cuidador" className="p-4 border rounded-xl font-bold" value={enrollData.caregiverPhone} onChange={e => setEnrollData({...enrollData, caregiverPhone: e.target.value})} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button onClick={handleEnroll} disabled={loading || !selectedId} className="w-full bg-school-green text-white py-6 rounded-[2rem] font-black text-xl shadow-xl hover:bg-school-green-dark transition-all">
-          {loading ? 'REGISTRANDO...' : 'REGISTRAR INFORMACIÓN COMPLETA PIAR'}
+  return (
+    <div className="space-y-8 animate-fadeIn pb-20">
+      {/* SELECTOR DE MÓDULO (RESTAURADO) */}
+      <div className="flex bg-white p-2 rounded-[2rem] shadow-sm border border-gray-100 max-w-md">
+        <button 
+          onClick={() => setActiveTab('seguimiento')}
+          className={`flex-1 py-3 rounded-[1.5rem] font-black text-[10px] uppercase transition-all ${activeTab === 'seguimiento' ? 'bg-school-green text-white shadow-lg' : 'text-gray-400'}`}
+        >
+          Seguimiento de Ajustes
+        </button>
+        <button 
+          onClick={() => setActiveTab('revision')}
+          className={`flex-1 py-3 rounded-[1.5rem] font-black text-[10px] uppercase transition-all ${activeTab === 'revision' ? 'bg-school-green text-white shadow-lg' : 'text-gray-400'}`}
+        >
+          Revisión de Competencias
         </button>
       </div>
-    );
-  };
 
-  return <div className="space-y-6">{renderContent()}</div>;
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 min-h-[500px]">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-12 h-12 border-4 border-school-yellow border-t-school-green rounded-full animate-spin"></div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Consultando registros...</p>
+          </div>
+        ) : activeTab === 'seguimiento' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {piarRecords.length > 0 ? piarRecords.map(rec => (
+              <div key={rec.id} className="bg-gray-50 p-6 rounded-[2.5rem] border border-gray-100 hover:shadow-md transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="bg-school-green/10 text-school-green px-3 py-1 rounded-lg text-[9px] font-black uppercase">
+                    {rec.grade} • {rec.sede}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-400">{rec.fecha}</span>
+                </div>
+                <h4 className="font-black text-gray-800 uppercase mb-1">{rec.studentName}</h4>
+                <p className="text-[10px] font-black text-school-green uppercase mb-4">{rec.subject}</p>
+                <div className="bg-white p-4 rounded-2xl text-xs text-gray-600 mb-6 border border-gray-100 italic">
+                  "{rec.objectives}"
+                </div>
+                <button 
+                  onClick={() => handleVerify(rec.id, 'registros_piar')}
+                  className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase transition-all ${rec.es_verificado ? 'bg-gray-200 text-gray-400 cursor-default' : 'bg-school-green text-white shadow-lg hover:bg-school-green-dark'}`}
+                  disabled={rec.es_verificado}
+                >
+                  {rec.es_verificado ? 'Verificado por Gestor' : 'Validar Ajustes Reasonables'}
+                </button>
+              </div>
+            )) : (
+              <div className="col-span-2 text-center py-20">
+                <p className="text-gray-400 font-bold italic">No se encontraron registros de seguimiento PIAR.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[10px] font-black text-gray-400 uppercase border-b border-gray-50">
+                  <th className="pb-6">Estudiante</th>
+                  <th className="pb-6">Grado / Sede</th>
+                  <th className="pb-6">Año Escolar</th>
+                  <th className="pb-6 text-right">Estado de Revisión</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {competencyReports.map(rep => (
+                  <tr key={rep.id} className="group">
+                    <td className="py-6">
+                      <p className="font-black text-gray-800 text-sm uppercase">{rep.studentName}</p>
+                    </td>
+                    <td className="py-6">
+                      <p className="text-xs font-bold text-gray-500">{rep.grade}</p>
+                    </td>
+                    <td className="py-6 font-black text-school-green">{rep.year}</td>
+                    <td className="py-6 text-right">
+                      <button 
+                        onClick={() => handleVerify(rep.id!, 'informes_competencias')}
+                        className={`px-6 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${rep.isVerified ? 'bg-green-50 text-green-500 border border-green-100' : 'bg-school-yellow text-school-green-dark shadow-md'}`}
+                        disabled={rep.isVerified}
+                      >
+                        {rep.isVerified ? '✓ Verificado' : 'Marcar como Revisado'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
-export default PiarGestor;
+export default PiarManagement;
