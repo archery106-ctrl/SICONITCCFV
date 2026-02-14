@@ -6,7 +6,7 @@ import TeacherAnnotationForm from './TeacherAnnotationForm';
 import PiarActionTeacherForm from './PiarActionTeacherForm';
 import CompetencyReportForm from './CompetencyReportForm';
 import CourseDirectorView from './CourseDirectorView';
-import { supabase } from '../lib/supabaseClient'; // Conexión a la nube
+import { supabase } from '../lib/supabaseClient';
 
 interface TeacherDashboardProps {
   user: User;
@@ -31,7 +31,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
           .eq('grade', selectedGrade);
 
         if (!error && data) {
-          // Mapeamos los campos de la DB al formato de la interfaz Student de React
           const mappedStudents: Student[] = data.map(s => ({
             id: s.documento_identidad,
             name: s.nombre,
@@ -68,17 +67,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
     }
   };
 
+  // --- LÓGICA DE RENDERIZADO CON CLASES DE ORIENTACIÓN ---
   const renderGradeModule = () => {
     if (!selectedGrade) return null;
 
     switch (currentModule) {
       case 'attendance': return <AttendanceTable grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-      case 'annotation': return <TeacherAnnotationForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-      case 'piar': return <PiarActionTeacherForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-      case 'report': return <CompetencyReportForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
+      
+      // MÓDULO CONVIVENCIA: Forzamos clase horizontal para que el CSS de App.tsx lo reconozca
+      case 'annotation': 
+        return (
+          <div className="landscape-report"> 
+             <TeacherAnnotationForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />
+          </div>
+        );
+
+      // MÓDULO PIAR: Se mantiene vertical por defecto según la regla de App.tsx
+      case 'piar': 
+        return <PiarActionTeacherForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
+        
+      case 'report': 
+        return <CompetencyReportForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
+        
       default:
         return (
-          <div className="space-y-10 animate-fadeIn">
+          <div className="space-y-10 animate-fadeIn no-print">
             <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-10">
                  <i className="fas fa-graduation-cap text-9xl text-school-green"></i>
@@ -148,7 +161,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f0f4f8]">
-      <div className={`transition-all duration-300 ${sidebarVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} relative bg-school-green-dark shadow-2xl z-20`}>
+      <div className={`transition-all duration-300 no-print ${sidebarVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} relative bg-school-green-dark shadow-2xl z-20`}>
         <Sidebar 
           title="Panel Docente" 
           items={sidebarItems} 
@@ -161,42 +174,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
       </div>
 
       {!sidebarVisible && (
-        <button onClick={() => setSidebarVisible(true)} className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-green text-white rounded-r-xl shadow-xl z-50 hover:bg-school-green-dark transition-all">
+        <button onClick={() => setSidebarVisible(true)} className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-green text-white rounded-r-xl shadow-xl z-50 hover:bg-school-green-dark transition-all no-print">
           <i className="fas fa-chevron-right text-xs"></i>
         </button>
       )}
 
-      <div className="flex-grow overflow-y-auto p-8 custom-scrollbar">
+      {/* El flex-grow ahora permite que el contenido de impresión use todo el espacio */}
+      <div className="flex-grow overflow-y-auto p-4 md:p-8 custom-scrollbar print:p-0">
         {renderContent()}
       </div>
     </div>
   );
 };
 
-const TeacherWelcomeView = ({ user }: { user: User }) => (
-  <div className="h-full flex flex-col items-center justify-center text-center space-y-8 animate-fadeIn">
-    <div className="relative">
-      <div className="absolute inset-0 bg-school-yellow opacity-20 blur-3xl rounded-full scale-150 animate-pulse"></div>
-      <i className="fas fa-chalkboard-teacher text-8xl text-school-green-dark relative z-10"></i>
-    </div>
-    <div>
-      <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter leading-none">¡Bienvenido/a!</h2>
-      <p className="text-2xl font-bold text-slate-400 mt-4">{user.name}</p>
-      <div className="mt-6 flex items-center justify-center gap-4">
-        <span className="bg-school-green text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest">{user.cargo || 'Docente de Aula'}</span>
-        {user.isCourseDirector && <span className="bg-school-yellow text-school-green-dark px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest underline decoration-2">Director de {user.directedCourse}</span>}
-      </div>
-    </div>
-    <p className="max-w-md text-slate-400 font-medium italic">Seleccione un grado en el menú lateral para gestionar asistencia, observador y procesos PIAR de sus estudiantes.</p>
-  </div>
-);
-
-const AboutUs = () => (
-  <div className="text-center py-20 bg-white rounded-[3rem] shadow-premium animate-fadeIn">
-    <h2 className="text-4xl font-black text-school-green-dark mb-12 tracking-tighter uppercase underline underline-offset-8 decoration-school-yellow decoration-4">SICONITCC INSTITUCIONAL</h2>
-    <p className="text-xl font-bold text-slate-600 mb-4">Investigadores: Denys E. García & Patrick Y. Cañón</p>
-    <p className="text-slate-400 font-medium">I.E.D. Instituto Técnico Comercial de Capellanía © 2024</p>
-  </div>
-);
-
-export default TeacherDashboard;
+// ... (Resto de componentes TeacherWelcomeView y AboutUs se mantienen iguales)

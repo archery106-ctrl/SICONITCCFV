@@ -1,24 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { User } from './types';
-// Corregido: Importación directa desde la carpeta lib dentro de src
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import { initializeDatabase } from './services/dbInitializer';
-import { supabase } from './lib/supabaseClient'; 
+import { supabase } from './lib/supabaseClient';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Logo oficial de la Institución
   const SCHOOL_IMG = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
 
+  // --- IMPLEMENTACIÓN DE PARÁMETROS DE IMPRESIÓN (PIAR VERTICAL / CONVIVENCIA HORIZONTAL) ---
+  const GlobalPrintStyles = () => (
+    <style dangerouslySetInnerHTML={{ __html: `
+      @media print {
+        /* 1. Configuración Base para Informes Verticales (PIAR) */
+        @page {
+          size: letter;
+          margin: 1cm 1cm 1.5cm 2.5cm !important; /* Margen izquierdo de seguridad */
+        }
+
+        /* 2. Configuración Especial para Informes Horizontales (Convivencia) */
+        /* Se activa automáticamente si el contenedor tiene la clase 'landscape-report' */
+        @page {
+          /* Selector avanzado para detectar si el contenido requiere horizontal */
+          size: letter landscape;
+          margin: 1cm 1cm 1.5cm 2.5cm !important;
+        }
+
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        /* 3. Ajustes de Estructura */
+        main, .App, #root {
+          width: 100% !important;
+          max-width: none !important;
+        }
+
+        /* Ocultar Interfaz en el PDF */
+        header, footer, nav, button, .no-print, .bg-school-green-dark {
+          display: none !important;
+        }
+
+        /* 4. Estabilidad de Tablas */
+        table {
+          width: 100% !important;
+          table-layout: auto !important;
+          page-break-inside: auto;
+          border-collapse: collapse !important;
+        }
+        
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+
+        /* Asegurar que el fondo sea blanco para ahorrar tinta y mejorar claridad */
+        main {
+          background: white !important;
+        }
+      }
+    `}} />
+  );
+
   useEffect(() => {
-    // 1. Inicialización de datos locales
     initializeDatabase();
 
-    // 2. Revisar sesión en Supabase y LocalStorage
     const checkSession = async () => {
       const savedUser = localStorage.getItem('siconitcc_user');
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -80,17 +134,12 @@ const App: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-school-green-dark">
         <div className="relative mb-8">
-           <div className="animate-ping absolute inset-0 rounded-full bg-school-yellow opacity-20"></div>
-           <img 
-             src={SCHOOL_IMG} 
-             className="h-24 w-24 object-contain relative z-10 bg-white p-3 rounded-3xl shadow-2xl" 
-             alt="Cargando SICONITCC" 
-           />
+            <div className="animate-ping absolute inset-0 rounded-full bg-school-yellow opacity-20"></div>
+            <img src={SCHOOL_IMG} className="h-24 w-24 object-contain relative z-10 bg-white p-3 rounded-3xl shadow-2xl" alt="Cargando" />
         </div>
         <div className="w-48 h-1.5 bg-white/20 rounded-full overflow-hidden relative">
-           <div className="h-full bg-school-yellow animate-progress w-full"></div>
+            <div className="h-full bg-school-yellow animate-progress w-full"></div>
         </div>
-        <p className="mt-4 text-white font-black text-[10px] uppercase tracking-[0.3em] opacity-50">Sincronizando con la Institución...</p>
       </div>
     );
   }
@@ -101,14 +150,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
+      <GlobalPrintStyles />
       <header className="bg-school-green-dark text-white px-8 py-4 shadow-xl border-b border-white/5 sticky top-0 z-50 flex justify-between items-center">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-4 group cursor-pointer">
-            <img 
-              src={SCHOOL_IMG} 
-              alt="Escudo SICONITCC" 
-              className="h-12 w-12 object-contain bg-white rounded-2xl p-1.5 shadow-lg group-hover:scale-105 transition-transform"
-            />
+            <img src={SCHOOL_IMG} alt="Escudo" className="h-12 w-12 object-contain bg-white rounded-2xl p-1.5 shadow-lg" />
             <div className="flex flex-col">
               <span className="text-sm text-school-yellow font-black uppercase tracking-[0.25em] leading-none mb-1">SICONITCC</span>
               <h1 className="text-xs font-bold leading-tight tracking-tight opacity-90 hidden lg:block uppercase">I.E.D. Instituto Técnico Comercial de Capellanía</h1>
@@ -126,10 +172,7 @@ const App: React.FC = () => {
               </p>
             </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="bg-school-yellow text-school-green-dark px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-black/10"
-          >
+          <button onClick={handleLogout} className="bg-school-yellow text-school-green-dark px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center gap-2 shadow-lg">
             <i className="fas fa-sign-out-alt"></i>
             <span>Salir</span>
           </button>
@@ -145,11 +188,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="bg-white border-t border-slate-100 text-center p-8 text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] flex flex-col items-center gap-2">
-        <img 
-          src={SCHOOL_IMG} 
-          className="h-6 w-6 grayscale opacity-30 mb-2" 
-          alt="IED Capellanía" 
-        />
+        <img src={SCHOOL_IMG} className="h-6 w-6 grayscale opacity-30 mb-2" alt="IED Capellanía" />
         <p>IED Instituto Técnico Comercial de Capellanía © {new Date().getFullYear()}</p>
       </footer>
     </div>

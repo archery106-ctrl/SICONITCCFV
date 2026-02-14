@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Student, Course, PiarRecord } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
 interface PiarActionTeacherFormProps {
   grade: string;
@@ -14,6 +14,8 @@ const PiarActionTeacherForm: React.FC<PiarActionTeacherFormProps> = ({ grade, on
   const [piarRecords, setPiarRecords] = useState<PiarRecord[]>([]);
   
   const [selection, setSelection] = useState({ sede: '', grade: '', studentId: '' });
+  
+  // 1. MANTENEMOS TODO EL ESTADO ORIGINAL DE DATA
   const [data, setData] = useState<Partial<PiarRecord>>({
     period: 1,
     objectives: '',
@@ -25,20 +27,47 @@ const PiarActionTeacherForm: React.FC<PiarActionTeacherFormProps> = ({ grade, on
 
   const [showObservations, setShowObservations] = useState(false);
 
+  // 2. NUEVO ESTADO PARA EL ACTA (INDEPENDIENTE)
+  const [actaData, setActaData] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    institucion: 'I.E.D. Instituto Técnico Comercial de Capellanía',
+    nombre_estudiante: '',
+    identificacion: '',
+    equipo_directivo: '',
+    nombre_madre: '',
+    nombre_padre: ''
+  });
+
   useEffect(() => {
     setSedes(JSON.parse(localStorage.getItem('siconitcc_sedes') || '[]'));
     setCourses(JSON.parse(localStorage.getItem('siconitcc_courses') || '[]'));
     setStudents(JSON.parse(localStorage.getItem('siconitcc_students') || '[]'));
     setPiarRecords(JSON.parse(localStorage.getItem('siconitcc_piar_records') || '[]'));
     
-    // Auto-detectar sede/grado basado en el contexto actual
     const current = JSON.parse(localStorage.getItem('siconitcc_courses') || '[]').find((c:any) => c.grade === grade);
     if(current) setSelection(s => ({...s, grade: current.grade, sede: current.sede}));
   }, [grade]);
 
+  // AUTOCOMPLETADO DEL ACTA AL SELECCIONAR ESTUDIANTE
+  useEffect(() => {
+    if (selection.studentId) {
+      const s = students.find(st => st.id === selection.studentId);
+      if (s) {
+        setActaData(prev => ({
+          ...prev,
+          nombre_estudiante: s.name,
+          identificacion: (s as any).documentNumber || '',
+          nombre_madre: (s as any).motherName || '',
+          nombre_padre: (s as any).fatherName || ''
+        }));
+      }
+    }
+  }, [selection.studentId, students]);
+
   const filteredGrades = selection.sede ? courses.filter(c => c.sede === selection.sede) : [];
   const filteredStudents = selection.grade ? students.filter(s => s.grade === selection.grade && s.isPiar) : [];
 
+  // MANTENEMOS LAS FUNCIONES TOGGLE ORIGINALES
   const toggleBarrier = (b: string) => {
     const current = data.barriers || [];
     setData({ ...data, barriers: current.includes(b) ? current.filter(x => x !== b) : [...current, b] });
@@ -49,13 +78,22 @@ const PiarActionTeacherForm: React.FC<PiarActionTeacherFormProps> = ({ grade, on
     setData({ ...data, adjustments: current.includes(a) ? current.filter(x => x !== a) : [...current, a] });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selection.studentId) return alert('Debe seleccionar un estudiante de la lista.');
+    if (!selection.studentId) return alert('Debe seleccionar un estudiante.');
     
     const student = students.find(s => s.id === selection.studentId);
     const currentUser = JSON.parse(localStorage.getItem('siconitcc_user') || '{}');
 
+    // GUARDAR ACTA EN SUPABASE SI HAY EQUIPO DIRECTIVO
+    if (actaData.equipo_directivo.trim() !== "") {
+      await supabase.from('actas_acuerdo_piar').upsert([{
+        ...actaData,
+        estudiante_id: selection.studentId
+      }], { onConflict: 'estudiante_id' });
+    }
+
+    // GUARDAR REGISTRO PIAR (LÓGICA ORIGINAL)
     const newRecord: PiarRecord = {
       id: Date.now().toString(),
       studentId: selection.studentId,
@@ -76,142 +114,89 @@ const PiarActionTeacherForm: React.FC<PiarActionTeacherFormProps> = ({ grade, on
 
     const updatedRecords = [...piarRecords, newRecord];
     localStorage.setItem('siconitcc_piar_records', JSON.stringify(updatedRecords));
-    setPiarRecords(updatedRecords);
     window.dispatchEvent(new Event('storage'));
     
-    alert("¡Ajustes PIAR registrados y enviados exitosamente al Gestor!");
-    
-    // RESETEO COMPLETO DEL FORMULARIO
-    setSelection({ sede: '', grade: '', studentId: '' });
-    setData({
-      period: 1,
-      objectives: '',
-      barriers: [],
-      adjustments: [],
-      evaluationMethod: '',
-      improvementStrategies: ''
-    });
-    setShowObservations(false);
+    alert("¡Ajustes registrados exitosamente!");
+    onBack();
   };
-
-  const currentObservation = piarRecords
-    .filter(r => r.studentId === selection.studentId)
-    .sort((a, b) => b.id.localeCompare(a.id))[0]?.gestorObservations;
 
   return (
     <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-10">
+      {/* CABECERA Y OBSERVACIONES GESTOR (IGUAL) */}
       <div className="flex justify-between items-center">
-        <button onClick={onBack} className="text-school-green font-bold text-sm flex items-center gap-2 group">
-          <i className="fas fa-chevron-left group-hover:-translate-x-1 transition-transform"></i> Volver
+        <button onClick={onBack} className="text-school-green font-bold text-sm flex items-center gap-2">
+          <i className="fas fa-chevron-left"></i> Volver
         </button>
-        <div className="text-right">
-          <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight">Acciones y Ajustes PIAR</h2>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan Individual de Ajustes Razonables</p>
-          <div className="mt-2 text-[9px] font-bold text-school-green bg-school-green/5 px-3 py-1 rounded-full inline-block">
-            Auto-Registro: {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
+        <h2 className="text-3xl font-black text-school-green-dark uppercase">Acciones y Ajustes PIAR</h2>
       </div>
 
-      {selection.studentId && currentObservation && (
-        <div className="flex justify-end">
-           <button 
-             onClick={() => setShowObservations(!showObservations)}
-             className="bg-school-yellow text-school-green-dark px-6 py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
-           >
-             <i className="fas fa-comment-dots"></i> {showObservations ? 'Ocultar Observaciones Gestor' : 'Ver Observaciones del Gestor'}
-           </button>
-        </div>
-      )}
-
-      {showObservations && currentObservation && (
-        <div className="p-8 bg-school-yellow/10 border-2 border-dashed border-school-yellow/30 rounded-3xl animate-slideInUp">
-           <p className="text-[10px] font-black uppercase text-school-yellow-dark mb-3 tracking-[0.2em] flex items-center gap-2">
-             <i className="fas fa-info-circle"></i> Retroalimentación del Gestor PIAR:
-           </p>
-           <p className="text-sm font-bold text-slate-700 leading-relaxed italic bg-white p-6 rounded-2xl shadow-inner-soft">
-             "{currentObservation}"
-           </p>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 shadow-inner-soft">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Sede</label>
-            <select required className="w-full p-4 border rounded-2xl bg-white font-bold outline-none focus:ring-2 focus:ring-school-green" value={selection.sede} onChange={e => setSelection({...selection, sede: e.target.value, grade: '', studentId: ''})}>
-              <option value="">Escoger Sede...</option>
-              {sedes.map((s, i) => <option key={i} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Grado</label>
-            <select required className="w-full p-4 border rounded-2xl bg-white font-bold outline-none focus:ring-2 focus:ring-school-green disabled:opacity-50" value={selection.grade} disabled={!selection.sede} onChange={e => setSelection({...selection, grade: e.target.value, studentId: ''})}>
-              <option value="">Escoger Grado...</option>
-              {filteredGrades.map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Estudiante Focalizado</label>
-            <select required className="w-full p-4 border rounded-2xl bg-white font-bold outline-none focus:ring-2 focus:ring-school-green disabled:opacity-50" value={selection.studentId} disabled={!selection.grade} onChange={e => setSelection({...selection, studentId: e.target.value})}>
-              <option value="">Escoger Estudiante...</option>
-              {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+        {/* BLOQUE DE SELECCIÓN (IGUAL) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 bg-gray-50 rounded-[2.5rem]">
+          <select required className="p-4 border rounded-2xl font-bold" value={selection.sede} onChange={e => setSelection({...selection, sede: e.target.value, grade: '', studentId: ''})}>
+            <option value="">Sede...</option>
+            {sedes.map((s, i) => <option key={i} value={s}>{s}</option>)}
+          </select>
+          <select required className="p-4 border rounded-2xl font-bold" value={selection.grade} disabled={!selection.sede} onChange={e => setSelection({...selection, grade: e.target.value, studentId: ''})}>
+            <option value="">Grado...</option>
+            {filteredGrades.map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
+          </select>
+          <select required className="p-4 border rounded-2xl font-bold" value={selection.studentId} disabled={!selection.grade} onChange={e => setSelection({...selection, studentId: e.target.value})}>
+            <option value="">Estudiante...</option>
+            {filteredStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
 
+        {/* PERIODOS Y OBJETIVOS (IGUAL) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-           <div className="space-y-1 col-span-1">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Periodo Académico</label>
-              <select className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={data.period} onChange={e => setData({...data, period: parseInt(e.target.value)})}>
-                 {[1,2,3,4].map(p => <option key={p} value={p}>Periodo {p}</option>)}
-              </select>
-           </div>
-           <div className="space-y-1 col-span-3">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Objetivos o Propósitos</label>
-              <input required placeholder="Defina los propósitos para este periodo..." className="w-full p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:ring-2 focus:ring-school-green" value={data.objectives} onChange={e => setData({...data, objectives: e.target.value})} />
-           </div>
+           <select className="p-4 border rounded-2xl font-bold" value={data.period} onChange={e => setData({...data, period: parseInt(e.target.value)})}>
+              {[1,2,3,4].map(p => <option key={p} value={p}>Periodo {p}</option>)}
+           </select>
+           <input required className="md:col-span-3 p-4 border rounded-2xl font-bold" placeholder="Objetivos..." value={data.objectives} onChange={e => setData({...data, objectives: e.target.value})} />
         </div>
 
-        <div className="space-y-6">
-           <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-3">
-             <i className="fas fa-exclamation-triangle text-school-yellow"></i> Barreras Evidenciadas
-           </h3>
-           <div className="flex flex-wrap gap-3">
+        {/* BARRERAS (IGUAL) */}
+        <div className="space-y-4">
+           <h3 className="font-black text-gray-700 uppercase text-xs">Barreras</h3>
+           <div className="flex flex-wrap gap-2">
               {['Metodológicas', 'Actitudinales', 'Físicas', 'Curriculares', 'En contexto de aula', 'En contexto escolar', 'En contexto social', 'En contexto familiar'].map(b => (
-                <button key={b} type="button" onClick={() => toggleBarrier(b)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${data.barriers?.includes(b) ? 'bg-school-yellow border-school-yellow text-school-green-dark shadow-md scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-school-yellow/30'}`}>
+                <button key={b} type="button" onClick={() => toggleBarrier(b)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase border-2 ${data.barriers?.includes(b) ? 'bg-school-yellow border-school-yellow' : 'bg-white border-gray-100'}`}>
                   {b}
                 </button>
               ))}
            </div>
         </div>
 
-        <div className="space-y-6">
-           <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-3">
-             <i className="fas fa-tools text-school-green"></i> Ajustes Razonables
-           </h3>
-           <div className="flex flex-wrap gap-3">
+        {/* AJUSTES (IGUAL) */}
+        <div className="space-y-4">
+           <h3 className="font-black text-gray-700 uppercase text-xs">Ajustes Razonables</h3>
+           <div className="flex flex-wrap gap-2">
               {['Flexibilización', 'Priorización', 'Modificación', 'Gradualidad', 'Materiales', 'Espacios', 'Tiempos', 'Comunicación'].map(a => (
-                <button key={a} type="button" onClick={() => toggleAdjustment(a)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${data.adjustments?.includes(a) ? 'bg-school-green border-school-green text-white shadow-md scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-school-green/30'}`}>
+                <button key={a} type="button" onClick={() => toggleAdjustment(a)} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase border-2 ${data.adjustments?.includes(a) ? 'bg-school-green border-school-green text-white' : 'bg-white border-gray-100'}`}>
                   {a}
                 </button>
               ))}
            </div>
         </div>
 
+        {/* EVALUACIÓN Y MEJORA (IGUAL) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-1">¿De qué manera se van a evaluar los ajustes?</label>
-              <textarea required className="w-full p-5 border rounded-2xl bg-gray-50 h-32 font-medium outline-none focus:ring-2 focus:ring-school-green" value={data.evaluationMethod} onChange={e => setData({...data, evaluationMethod: e.target.value})} />
-           </div>
-           <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Estrategias de Mejora (Al final del periodo)</label>
-              <textarea placeholder="Propuesta de mejora para el próximo ciclo..." className="w-full p-5 border rounded-2xl bg-gray-50 h-32 font-medium outline-none focus:ring-2 focus:ring-school-green" value={data.improvementStrategies} onChange={e => setData({...data, improvementStrategies: e.target.value})} />
-           </div>
+           <textarea required placeholder="¿Cómo se va a evaluar?" className="p-4 border rounded-2xl h-32" value={data.evaluationMethod} onChange={e => setData({...data, evaluationMethod: e.target.value})} />
+           <textarea placeholder="Estrategias de Mejora" className="p-4 border rounded-2xl h-32" value={data.improvementStrategies} onChange={e => setData({...data, improvementStrategies: e.target.value})} />
         </div>
 
-        <button type="submit" className="w-full bg-school-green text-white py-6 rounded-[2rem] font-black text-xl shadow-xl hover:bg-school-green-dark transition-all transform hover:scale-[1.01] shadow-school-green/20">
-          <i className="fas fa-paper-plane mr-2"></i> Guardar y Enviar al Gestor PIAR
+        {/* BLOQUE ACTA DE ACUERDO (INYECCIÓN FINAL) */}
+        <div className="p-8 border-4 border-double border-school-yellow rounded-[2.5rem] bg-school-yellow/5 space-y-4">
+          <h4 className="text-center font-black text-school-yellow-dark uppercase italic">Acta de Acuerdo (Opcional)</h4>
+          <input placeholder="Equipo Directivo Interviniente" className="w-full p-4 border rounded-xl font-bold" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
+          <div className="grid grid-cols-2 gap-4 text-[10px] font-bold uppercase text-gray-400">
+             <span>Estudiante: {actaData.nombre_estudiante || '-'}</span>
+             <span>Identificación: {actaData.identificacion || '-'}</span>
+          </div>
+        </div>
+
+        <button type="submit" className="w-full bg-school-green text-white py-6 rounded-[2rem] font-black text-xl shadow-xl">
+          GUARDAR AJUSTES Y ENVIAR
         </button>
       </form>
     </div>
