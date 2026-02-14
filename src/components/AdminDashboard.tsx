@@ -9,8 +9,6 @@ import CourseForm from './CourseForm';
 import AnnotationAdmin from './AnnotationAdmin';
 import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
-// COMENTADO TEMPORALMENTE PARA PERMITIR EL BUILD
-// import StudentWithdrawalManager from './StudentWithdrawalManager'; 
 import { supabase } from '../lib/supabaseClient';
 
 interface AdminDashboardProps {
@@ -22,19 +20,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [leftVisible, setLeftVisible] = useState(true);
   const [rightVisible, setRightVisible] = useState(true);
 
+  // Inicialización con arreglos vacíos para evitar errores de .map()
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [areas, setAreas] = useState<AcademicArea[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [sedes, setSedes] = useState<string[]>([]);
+  const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
   const [loading, setLoading] = useState(false);
 
-  const isAdmin = user.role === 'admin';
+  // REPARACIÓN 1: Flexibilidad en el rol (evita que se bloquee por mayúsculas o espacios)
+  const isAdmin = user.role?.toLowerCase().trim() === 'admin';
 
   const loadAllData = async () => {
     setLoading(true);
     try {
+      // REPARACIÓN 2: Uso de fallbacks (|| []) para que el sistema no sea "null"
       const { data: stData } = await supabase.from('estudiantes').select('*').eq('retirado', false);
       setStudents(stData || []);
 
@@ -45,8 +46,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setCourses(cData || []);
 
       const { data: sData } = await supabase.from('sedes').select('nombre');
-      if (sData) setSedes(sData.map(s => s.nombre));
-      else setSedes(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
+      if (sData && sData.length > 0) setSedes(sData.map(s => s.nombre));
 
       const { data: aData } = await supabase.from('areas_academicas').select('*');
       setAreas(aData || []);
@@ -55,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       setSubjects(subData || []);
 
     } catch (err) {
-      console.error("Error cargando base de datos:", err);
+      console.error("Error en sincronización:", err);
     } finally {
       setLoading(false);
     }
@@ -87,11 +87,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   };
 
   const renderContent = () => {
-    if (loading && students.length === 0 && activeTab !== 'overview') {
+    // REPARACIÓN 3: Pantalla de carga amigable
+    if (loading && activeTab !== 'overview' && students.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="w-10 h-10 border-4 border-school-green border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizando I.E.D. Capellanía...</p>
+        <div className="flex flex-col items-center justify-center h-full space-y-4">
+          <div className="w-12 h-12 border-4 border-school-green border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Sincronizando I.E.D. Capellanía...</p>
         </div>
       );
     }
@@ -101,13 +102,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         return isAdmin ? (
           <div className="space-y-12 animate-fadeIn">
             <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />
-            <div className="border-t-4 border-dashed border-gray-100 pt-12">
-              {/* COMENTADO TEMPORALMENTE PARA EVITAR ERROR DE COMPILACIÓN */}
-              {/* <StudentWithdrawalManager sedes={sedes} courses={courses} students={students} onUpdate={loadAllData} /> */}
-              <p className="text-center text-gray-300 italic text-[10px] uppercase font-black">Módulo de Retiros en mantenimiento</p>
+            <div className="border-t-4 border-dashed border-gray-100 pt-12 text-center">
+              <p className="text-gray-300 italic text-[10px] uppercase font-black">Mantenimiento de Retiros</p>
             </div>
           </div>
-        ) : null;
+        ) : <div className="p-20 text-center font-black text-red-500 uppercase">Acceso Administrativo Requerido</div>;
 
       case 'course-management': 
         return isAdmin ? <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} /> : null;
@@ -125,15 +124,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'piar-review':
         return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
 
-      case 'about-us': return (
-        <div className="h-full flex items-center justify-center animate-fadeIn">
-          <div className="text-center p-12 bg-white rounded-[3rem] shadow-premium border">
-            <h2 className="text-2xl font-black text-school-green-dark italic">SICONITCC V3.1</h2>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">I.E.D. Instituto Técnico Comercial de Capellanía</p>
-          </div>
-        </div>
-      );
-
       default:
         return (
           <div className="h-full flex flex-col items-center justify-center text-center space-y-8 animate-fadeIn">
@@ -143,6 +133,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                </h2>
                <div className="h-1 w-20 bg-school-yellow mx-auto mb-10"></div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Botones visibles siempre para Admin */}
                   {isAdmin && (
                     <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
                       <i className="fas fa-user-graduate mb-2 text-lg block"></i> Estudiantes
@@ -169,7 +160,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
       <div className="flex-grow overflow-y-auto p-8 h-full relative z-10 custom-scrollbar">
         {!leftVisible && (
-          <button onClick={() => setLeftVisible(true)} className="absolute left-0 top-1/2 -translate-y-1/2 bg-school-green text-white p-2 rounded-r-xl z-50 shadow-lg hover:bg-school-green-dark">
+          <button onClick={() => setLeftVisible(true)} className="absolute left-0 top-1/2 -translate-y-1/2 bg-school-green text-white p-2 rounded-r-xl z-50 shadow-lg">
             <i className="fas fa-chevron-right text-xs"></i>
           </button>
         )}
