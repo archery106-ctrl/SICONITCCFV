@@ -1,86 +1,106 @@
-import React, { useState } from 'react';
-import { Student, Course } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Student, Teacher, Course, AcademicArea, Subject } from '../types';
+import Sidebar from './Sidebar';
+import PiarGestor from './PiarGestor'; 
+import StatsView from './StatsView';
+import StudentForm from './StudentForm';
+import TeacherForm from './TeacherForm';
+import CourseForm from './CourseForm';
+import AnnotationAdmin from './AnnotationAdmin';
+import PasswordManagement from './PasswordManagement';
+import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
 
-interface ConvivenciaGestorProps {
-  students: Student[];
-  sedes: string[];
-  courses: Course[];
-}
+// --- COMPONENTE: FORMULARIO DE ADMIN COMPLETO ---
+const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData }) => {
+  const [formData, setFormData] = useState({ name: '', charge: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
 
-const ConvivenciaGestor: React.FC<ConvivenciaGestorProps> = ({ students = [], sedes = [], courses = [] }) => {
-  const [uploading, setUploading] = useState(false);
-
-  // FUNCIÓN PARA PROCESAR SUBIDA (Aquí es donde conectarás tu lógica de Excel)
-  const handleUpload = async (tipo: string) => {
-    console.log("Iniciando subida para:", tipo);
-    // Tu lógica de procesamiento de Excel plano iría aquí
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('perfiles_usuarios').insert([
+        { nombre: formData.name, cargo: formData.charge, email: formData.email, rol: 'admin' }
+      ]);
+      if (error) throw error;
+      alert("✅ Administrador registrado exitosamente.");
+      setFormData({ name: '', charge: '', email: '', password: '' });
+      refreshData();
+    } catch (err: any) { alert("Error: " + err.message); } 
+    finally { setLoading(false); }
   };
 
-  // SI NO HAY DATOS TODAVÍA, NO RENDERIZAMOS NADA QUE PUEDA ROMPERSE
-  if (!students || students.length === 0) {
-    return (
-      <div className="p-10 text-center bg-white rounded-[3rem] shadow-premium border-2 border-dashed border-gray-100 italic font-bold text-gray-400">
-        <i className="fas fa-database mb-3 text-2xl block"></i>
-        Esperando base de datos de estudiantes...
-      </div>
-    );
-  }
+  return (
+    <div className="bg-white p-10 rounded-[3rem] shadow-premium border-2 border-red-50 animate-fadeIn space-y-6">
+      <h3 className="text-3xl font-black text-red-600 uppercase italic text-center">Registrar Nuevo Administrador</h3>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+        <input type="text" placeholder="Cargo (Ej: Rectoría)" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.charge} onChange={e => setFormData({...formData, charge: e.target.value})} required />
+        <input type="email" placeholder="Correo Institucional" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+        <input type="password" placeholder="Contraseña Temporal" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
+        <button disabled={loading} className="md:col-span-2 p-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700 transition-all">
+          {loading ? 'Sincronizando...' : 'Dar de Alta Administrador'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    const { data: st } = await supabase.from('estudiantes').select('*');
+    setStudents(st || []);
+    const { data: co } = await supabase.from('cursos').select('*');
+    setCourses(co || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'insert-admin': return <InsertAdminForm refreshData={loadData} />;
+      case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
+      case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
+      case 'piar-enroll':
+      case 'piar-follow':
+      case 'piar-actas':
+        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
+      default:
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+            <button onClick={() => setActiveTab('convivencia')} className="p-10 bg-school-green text-white rounded-[2rem] font-black uppercase text-xs shadow-xl">Convivencia (Excel)</button>
+            <button onClick={() => setActiveTab('insert-admin')} className="p-10 bg-red-600 text-white rounded-[2rem] font-black uppercase text-xs shadow-xl">Nuevo Admin</button>
+            <button onClick={() => setActiveTab('piar-enroll')} className="p-10 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-xs shadow-xl">Gestión PIAR</button>
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="animate-fadeIn space-y-8">
-      <header className="text-center space-y-2">
-        <h2 className="text-4xl font-black text-school-green-dark italic uppercase">Módulo de Convivencia</h2>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">I.E.D. Instituto Técnico Comercial de Capellanía</p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* SECCIÓN FALTAS */}
-        <div className="bg-white p-8 rounded-[3rem] shadow-premium border border-gray-50 flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-            <i className="fas fa-exclamation-triangle"></i>
-          </div>
-          <h3 className="font-black text-xs uppercase italic">Reportar Faltas</h3>
-          <div className="flex flex-col w-full space-y-2">
-            <button onClick={() => handleUpload('Tipo I')} className="p-3 bg-gray-50 hover:bg-red-50 text-[9px] font-black uppercase rounded-xl transition-all">Tipo I</button>
-            <button onClick={() => handleUpload('Tipo II')} className="p-3 bg-gray-50 hover:bg-red-50 text-[9px] font-black uppercase rounded-xl transition-all">Tipo II</button>
-            <button onClick={() => handleUpload('Tipo III')} className="p-3 bg-gray-50 hover:bg-red-50 text-[9px] font-black uppercase rounded-xl transition-all">Tipo III</button>
-          </div>
-        </div>
-
-        {/* SECCIÓN INCUMPLIMIENTOS */}
-        <div className="bg-white p-8 rounded-[3rem] shadow-premium border border-gray-50 flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
-            <i className="fas fa-file-invoice"></i>
-          </div>
-          <h3 className="font-black text-xs uppercase italic">Incumplimientos</h3>
-          <div className="flex flex-col w-full space-y-2">
-            <button onClick={() => handleUpload('Leve')} className="p-3 bg-gray-50 hover:bg-orange-50 text-[9px] font-black uppercase rounded-xl transition-all">Leves</button>
-            <button onClick={() => handleUpload('Grave')} className="p-3 bg-gray-50 hover:bg-orange-50 text-[9px] font-black uppercase rounded-xl transition-all">Graves</button>
-            <button onClick={() => handleUpload('Gravísimo')} className="p-3 bg-gray-50 hover:bg-orange-50 text-[9px] font-black uppercase rounded-xl transition-all">Gravísimos</button>
-          </div>
-        </div>
-
-        {/* SECCIÓN ACCIONES DOCENTE */}
-        <div className="bg-white p-8 rounded-[3rem] shadow-premium border border-gray-50 flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-            <i className="fas fa-chalkboard-teacher"></i>
-          </div>
-          <h3 className="font-black text-xs uppercase italic">Acciones Docentes</h3>
-          <button onClick={() => handleUpload('Accion')} className="w-full p-4 bg-blue-600 text-white text-[9px] font-black uppercase rounded-xl shadow-lg hover:bg-blue-700 transition-all">
-            Subir Registro de Acciones
-          </button>
-        </div>
+    <div className="flex h-screen bg-gray-50">
+      <div className="w-64 bg-school-green-dark h-full p-4">
+        <Sidebar title="SICONITCC" items={[
+          { id: 'overview', label: 'Inicio', icon: 'fa-home' },
+          { id: 'course-management', label: 'Gestión Académica', icon: 'fa-school' },
+          { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
+          { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
+          { id: 'piar-enroll', label: 'PIAR', icon: 'fa-heart' }
+        ]} activeId={activeTab} onSelect={setActiveTab} color="school-green" onToggle={()=>{}} />
       </div>
-
-      <div className="bg-school-yellow/10 p-6 rounded-[2rem] border-2 border-dashed border-school-yellow/20 text-center">
-        <p className="text-[9px] font-black text-school-green-dark uppercase italic">
-          <i className="fas fa-info-circle mr-2"></i>
-          Recuerde que el archivo debe ser un Excel Plano (.csv o .xlsx) con la estructura de la I.E.D.
-        </p>
+      <div className="flex-grow p-10 overflow-y-auto">
+        {renderContent()}
       </div>
     </div>
   );
 };
 
-export default ConvivenciaGestor;
+export default AdminDashboard;
