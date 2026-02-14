@@ -2,38 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Student, Course, PiarRecord } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
-interface StudentDB extends Student {
-  courseId?: string;
-  documentNumber?: string;
-  documentType?: string;
-  motherName?: string;
-  fatherName?: string;
-  birthDate?: string;
-  address?: string;
-  age?: string; 
-}
-
 const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [piarRecords, setPiarRecords] = useState<PiarRecord[]>([]);
-  const [competencyReports, setCompetencyReports] = useState<any[]>([]);
-  const [selectedStudentRecords, setSelectedStudentRecords] = useState<any[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [piarRecords, setPiarRecords] = useState<any[]>([]);
   const [isActaModalOpen, setIsActaModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     quien_diligencia: '', cargo_diligencia: '', estudiante_id: '', sede: '', grado_id: '', 
-    edad: '', fecha_nacimiento: '', tipo_documento: '', numero_documento: '', depto_vive: 'Boyacá', 
-    municipio: 'Chiquinquirá', direccion: '', barrio_vereda: '', telefono: '', email: '', 
-    centro_proteccion: 'No', registro_civil_gestion: 'No', grupo_etnico: 'No', 
-    victima_conflicto: 'No', afiliacion_salud: 'No', eps: '', atendido_salud: 'No', 
-    diagnostico_medico: 'No', cual_diagnostico: '', asiste_terapias: 'No', 
-    tratamiento_enfermedad: 'No', consume_medicamentos: 'No', productos_apoyo: 'No',
-    nombre_madre: '', ocupacion_madre: '', nombre_padre: '', ocupacion_padre: '',
-    nombre_cuidador: '', parentesco_cuidador: '', tel_cuidador: '',
-    apoyo_bienestar_familiar: 'No', apoyo_unidad_victimas: 'No', apoyo_restablecimiento: 'No'
+    fecha_nacimiento: '', tipo_documento: '', numero_documento: '', depto_vive: 'Boyacá', 
+    municipio: 'Chiquinquirá', direccion: '', telefono: '', email: '', 
+    diagnostico_medico: 'No', cual_diagnostico: '', afiliacion_salud: 'No', eps: '',
+    nombre_madre: '', nombre_padre: '', tel_cuidador: ''
   });
 
   const [actaData, setActaData] = useState({
@@ -45,34 +26,17 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     const fetchInitialData = async () => {
       const { data: cData } = await supabase.from('cursos').select('*');
       if (cData) setCourses(cData);
-      fetchAuditData();
+      if (activeSubTab !== 'piar-enroll') fetchAuditData();
     };
     fetchInitialData();
   }, [activeSubTab]);
 
   const fetchAuditData = async () => {
     setLoading(true);
-    const table = activeSubTab === 'piar-follow' ? 'registros_piar' : 'students_competency_reports_table';
-    const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
-    if (!error) {
-      if (activeSubTab === 'piar-follow') setPiarRecords(data || []);
-      else setCompetencyReports(data || []);
-    }
+    const table = activeSubTab === 'piar-follow' ? 'registros_piar' : 'actas_acuerdo_piar';
+    const { data } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+    setPiarRecords(data || []);
     setLoading(false);
-  };
-
-  const handleStudentSelection = (id: string) => {
-    const s = students.find((st: Student) => st.id === id) as StudentDB;
-    if (s) {
-      setFormData(prev => ({
-        ...prev, estudiante_id: id,
-        tipo_documento: s.documentType || '',
-        numero_documento: s.documentNumber || s.id || '',
-        nombre_madre: s.motherName || '',
-        nombre_padre: s.fatherName || '',
-        direccion: s.address || ''
-      }));
-    }
   };
 
   const handleSaveAnexo1 = async (e: React.FormEvent) => {
@@ -82,108 +46,105 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
       const { error } = await supabase.from('estudiantes_piar').insert([formData]);
       if (error) throw error;
       await supabase.from('estudiantes').update({ is_piar: true }).eq('id', formData.estudiante_id);
-      alert("✅ Anexo 1: Focalización PIAR guardada con éxito en la nube.");
+      alert("✅ Focalización guardada y sincronizada.");
     } catch (err: any) { alert("Error: " + err.message); } 
     finally { setLoading(false); }
   };
 
-  // VISTA DE INSCRIPCIÓN (EL FORMULARIO LARGO)
+  // --- RENDERIZADO POR PESTAÑAS (VINCULADO AL SIDEBAR DERECHO) ---
+  
+  // 1. INSCRIPCIÓN (ANEXO 1)
   if (activeSubTab === 'piar-enroll') {
-    const filteredStudents = students.filter((s: Student) => (s as any).grade === courses.find(c => c.id === selectedCourseId)?.grade);
-    
+    const filteredStudents = students.filter((s: any) => s.grade === courses.find(c => c.id === selectedCourseId)?.grade);
     return (
-      <div className="bg-white p-10 rounded-[3.5rem] shadow-premium border border-gray-100 animate-fadeIn space-y-12 max-w-6xl mx-auto">
-        <header className="border-b-8 border-double border-school-yellow pb-6">
-          <h2 className="text-4xl font-black text-school-green-dark uppercase italic tracking-tighter">Anexo 1: Información General y del Entorno</h2>
-          <p className="text-gray-400 font-bold text-xs mt-2 uppercase">I.E.D. Instituto Técnico Comercial de Capellanía</p>
+      <div className="bg-white p-10 rounded-[3.5rem] shadow-premium border border-gray-100 animate-fadeIn space-y-10">
+        <header className="border-l-8 border-school-yellow pl-6">
+          <h2 className="text-3xl font-black text-school-green-dark uppercase italic tracking-tighter">Focalización (Anexo 1)</h2>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entorno Salud y Familia</p>
         </header>
 
-        <form onSubmit={handleSaveAnexo1} className="space-y-16">
-          
-          {/* SECCIÓN 1: DATOS GENERALES */}
-          <div className="space-y-6">
-            <h3 className="bg-school-green text-white px-6 py-2 rounded-full inline-block font-black uppercase text-[10px] italic">1. Identificación y Contexto</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-8 rounded-[2rem]">
-              <select required className="p-4 border rounded-xl font-bold text-xs" value={formData.sede} onChange={e => setFormData({...formData, sede: e.target.value})}>
-                <option value="">Sede...</option>
-                {sedes.map((s: string) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select required className="p-4 border rounded-xl font-bold text-xs" value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}>
-                <option value="">Grado...</option>
-                {courses.map((c: Course) => <option key={c.id} value={c.id}>{c.grade} - {c.sede}</option>)}
-              </select>
-              <select required className="p-4 border rounded-xl font-bold text-xs" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}>
-                <option value="">Seleccionar Estudiante...</option>
-                {filteredStudents.map((s: Student) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </div>
+        <form onSubmit={handleSaveAnexo1} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="space-y-4 md:col-span-2 bg-gray-50 p-6 rounded-3xl">
+              <p className="text-[10px] font-black uppercase text-school-green italic">Ubicación Escolar</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <select className="p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, sede: e.target.value})}>
+                  <option>Seleccione Sede...</option>
+                  {sedes.map((s:string) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select className="p-4 border rounded-2xl text-xs font-bold" onChange={e => setSelectedCourseId(e.target.value)}>
+                  <option>Grado...</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.grade}</option>)}
+                </select>
+                <select className="p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, estudiante_id: e.target.value})}>
+                  <option>Estudiante...</option>
+                  {filteredStudents.map((s:any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+           </div>
 
-          {/* SECCIÓN 2: ENTORNO SALUD (LO QUE FALTABA) */}
-          <div className="space-y-6">
-            <h3 className="bg-red-500 text-white px-6 py-2 rounded-full inline-block font-black uppercase text-[10px] italic">2. Entorno Salud</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-red-50/30 p-8 rounded-[2rem] border border-red-100">
-              <div className="flex flex-col gap-2">
-                <label className="font-black text-[9px] uppercase text-gray-500">¿Tiene Diagnóstico Médico?</label>
-                <select className="p-3 border rounded-xl text-xs font-bold" value={formData.diagnostico_medico} onChange={e => setFormData({...formData, diagnostico_medico: e.target.value})}>
-                  <option value="No">No</option>
-                  <option value="Si">Si</option>
-                </select>
-              </div>
-              <input placeholder="¿Cuál diagnóstico?" className="p-3 border rounded-xl text-xs font-bold md:col-span-3" value={formData.cual_diagnostico} onChange={e => setFormData({...formData, cual_diagnostico: e.target.value})} />
-              <div className="flex flex-col gap-2">
-                <label className="font-black text-[9px] uppercase text-gray-500">¿Afiliación Salud?</label>
-                <select className="p-3 border rounded-xl text-xs font-bold" value={formData.afiliacion_salud} onChange={e => setFormData({...formData, afiliacion_salud: e.target.value})}>
-                  <option value="No">No</option>
-                  <option value="Si">Si</option>
-                </select>
-              </div>
-              <input placeholder="Nombre de EPS" className="p-3 border rounded-xl text-xs font-bold" value={formData.eps} onChange={e => setFormData({...formData, eps: e.target.value})} />
-              <div className="flex flex-col gap-2">
-                <label className="font-black text-[9px] uppercase text-gray-500">¿Consume Medicamentos?</label>
-                <select className="p-3 border rounded-xl text-xs font-bold" value={formData.consume_medicamentos} onChange={e => setFormData({...formData, consume_medicamentos: e.target.value})}>
-                  <option value="No">No</option>
-                  <option value="Si">Si</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="font-black text-[9px] uppercase text-gray-500">¿Usa Apoyos Técnicos?</label>
-                <select className="p-3 border rounded-xl text-xs font-bold" value={formData.productos_apoyo} onChange={e => setFormData({...formData, productos_apoyo: e.target.value})}>
-                  <option value="No">No</option>
-                  <option value="Si">Si</option>
-                </select>
-              </div>
-            </div>
-          </div>
+           <div className="p-6 border-2 border-red-50 rounded-3xl space-y-4">
+              <p className="text-[10px] font-black uppercase text-red-500 italic">Entorno Salud</p>
+              <select className="w-full p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, diagnostico_medico: e.target.value})}>
+                <option value="No">¿Tiene Diagnóstico? No</option>
+                <option value="Si">¿Tiene Diagnóstico? Si</option>
+              </select>
+              <input placeholder="EPS" className="w-full p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, eps: e.target.value})} />
+           </div>
 
-          {/* SECCIÓN 3: ENTORNO HOGAR */}
-          <div className="space-y-6">
-            <h3 className="bg-blue-500 text-white px-6 py-2 rounded-full inline-block font-black uppercase text-[10px] italic">3. Entorno Hogar y Familia</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-blue-50/30 p-8 rounded-[2rem] border border-blue-100">
-              <input placeholder="Nombre Madre" className="p-4 border rounded-xl text-xs font-bold" value={formData.nombre_madre} onChange={e => setFormData({...formData, nombre_madre: e.target.value})} />
-              <input placeholder="Ocupación Madre" className="p-4 border rounded-xl text-xs font-bold" value={formData.ocupacion_madre} onChange={e => setFormData({...formData, ocupacion_madre: e.target.value})} />
-              <input placeholder="Nombre Padre" className="p-4 border rounded-xl text-xs font-bold" value={formData.nombre_padre} onChange={e => setFormData({...formData, nombre_padre: e.target.value})} />
-              <input placeholder="Ocupación Padre" className="p-4 border rounded-xl text-xs font-bold" value={formData.ocupacion_padre} onChange={e => setFormData({...formData, ocupacion_padre: e.target.value})} />
-              <input placeholder="Cuidador (si no es el padre/madre)" className="p-4 border rounded-xl text-xs font-bold" value={formData.nombre_cuidador} onChange={e => setFormData({...formData, nombre_cuidador: e.target.value})} />
-              <input placeholder="Teléfono Cuidador" className="p-4 border rounded-xl text-xs font-bold" value={formData.tel_cuidador} onChange={e => setFormData({...formData, tel_cuidador: e.target.value})} />
-            </div>
-          </div>
+           <div className="p-6 border-2 border-blue-50 rounded-3xl space-y-4">
+              <p className="text-[10px] font-black uppercase text-blue-500 italic">Entorno Familiar</p>
+              <input placeholder="Nombre Madre" className="w-full p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, nombre_madre: e.target.value})} />
+              <input placeholder="Nombre Padre" className="w-full p-4 border rounded-2xl text-xs font-bold" onChange={e => setFormData({...formData, nombre_padre: e.target.value})} />
+           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-school-green-dark text-white py-8 rounded-[3rem] font-black text-2xl shadow-premium hover:scale-[1.02] transition-all uppercase tracking-tighter">
-            {loading ? 'Sincronizando con Supabase...' : 'Guardar Anexo 1 Completo'}
-          </button>
+           <button className="md:col-span-2 bg-school-green text-white py-6 rounded-[2rem] font-black uppercase text-sm shadow-xl hover:bg-school-green-dark transition-all">
+              {loading ? 'Guardando en la Nube...' : 'Finalizar Registro de Focalización'}
+           </button>
         </form>
       </div>
     );
   }
 
-  // EL RESTO DEL CÓDIGO (ANEXO 2, 3, 4) PERMANECE IGUAL
-  return (
-    <div className="p-10 text-center animate-fadeIn">
-       <h2 className="text-2xl font-black text-gray-300 uppercase italic">Módulo PIAR: {activeSubTab} activo</h2>
-       <p className="text-xs text-gray-400">Seleccione una opción en el menú lateral para continuar.</p>
-    </div>
-  );
+  // 2. SEGUIMIENTO (ANEXO 2)
+  if (activeSubTab === 'piar-follow') {
+    return (
+      <div className="bg-white p-10 rounded-[3.5rem] shadow-premium animate-fadeIn min-h-[500px]">
+        <h2 className="text-3xl font-black text-school-green-dark uppercase italic mb-8">Seguimiento de Ajustes</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           {piarRecords.length === 0 ? (
+             <div className="col-span-full p-20 text-center border-2 border-dashed rounded-[3rem] text-gray-300 font-bold uppercase text-xs">Sin registros de seguimiento</div>
+           ) : (
+             piarRecords.map(r => (
+               <div key={r.id} className="p-6 bg-gray-50 rounded-3xl border flex justify-between items-center">
+                 <span className="font-black text-xs uppercase italic">{r.estudiante_nombre}</span>
+                 <button className="bg-school-green text-white px-4 py-2 rounded-xl font-bold text-[9px] uppercase">Ver PDF</button>
+               </div>
+             ))
+           )}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. ACTAS (ANEXO 3)
+  if (activeSubTab === 'piar-actas') {
+    return (
+      <div className="bg-white p-10 rounded-[3.5rem] shadow-premium animate-fadeIn min-h-[500px]">
+        <h2 className="text-3xl font-black text-school-green-dark uppercase italic mb-8">Actas de Acuerdo</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           {students.filter((s:any) => s.is_piar).map((st:any) => (
+             <div key={st.id} className="p-8 bg-school-yellow/5 border-2 border-school-yellow/20 rounded-[3rem] text-center space-y-4">
+                <i className="fas fa-file-signature text-school-yellow text-3xl"></i>
+                <p className="font-black text-[10px] uppercase truncate">{st.name}</p>
+                <button className="w-full bg-school-yellow text-school-green-dark py-3 rounded-2xl font-black text-[9px] uppercase">Generar Anexo 3</button>
+             </div>
+           ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default PiarGestor;

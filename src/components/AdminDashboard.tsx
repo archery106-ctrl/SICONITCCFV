@@ -11,93 +11,88 @@ import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
 
-// --- COMPONENTE: FORMULARIO DE ADMIN COMPLETO ---
-const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData }) => {
-  const [formData, setFormData] = useState({ name: '', charge: '', email: '', password: '' });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('perfiles_usuarios').insert([
-        { nombre: formData.name, cargo: formData.charge, email: formData.email, rol: 'admin' }
-      ]);
-      if (error) throw error;
-      alert("✅ Administrador registrado exitosamente.");
-      setFormData({ name: '', charge: '', email: '', password: '' });
-      refreshData();
-    } catch (err: any) { alert("Error: " + err.message); } 
-    finally { setLoading(false); }
-  };
-
-  return (
-    <div className="bg-white p-10 rounded-[3rem] shadow-premium border-2 border-red-50 animate-fadeIn space-y-6">
-      <h3 className="text-3xl font-black text-red-600 uppercase italic text-center">Registrar Nuevo Administrador</h3>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input type="text" placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-        <input type="text" placeholder="Cargo (Ej: Rectoría)" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.charge} onChange={e => setFormData({...formData, charge: e.target.value})} required />
-        <input type="email" placeholder="Correo Institucional" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-        <input type="password" placeholder="Contraseña Temporal" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-        <button disabled={loading} className="md:col-span-2 p-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700 transition-all">
-          {loading ? 'Sincronizando...' : 'Dar de Alta Administrador'}
-        </button>
-      </form>
-    </div>
-  );
-};
-
 const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [leftVisible, setLeftVisible] = useState(true);
+  const [rightVisible, setRightVisible] = useState(true);
+
+  // Estados de datos
   const [students, setStudents] = useState<Student[]>([]);
   const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
-    const { data: st } = await supabase.from('estudiantes').select('*');
-    setStudents(st || []);
-    const { data: co } = await supabase.from('cursos').select('*');
-    setCourses(co || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const { data: st } = await supabase.from('estudiantes').select('*').eq('retirado', false);
+      setStudents(st || []);
+      const { data: co } = await supabase.from('cursos').select('*');
+      setCourses(co || []);
+      setLoading(false);
+    };
+    loadData();
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'insert-admin': return <InsertAdminForm refreshData={loadData} />;
       case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
       case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
+      case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={()=>{}} />;
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas':
         return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
       default:
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-            <button onClick={() => setActiveTab('convivencia')} className="p-10 bg-school-green text-white rounded-[2rem] font-black uppercase text-xs shadow-xl">Convivencia (Excel)</button>
-            <button onClick={() => setActiveTab('insert-admin')} className="p-10 bg-red-600 text-white rounded-[2rem] font-black uppercase text-xs shadow-xl">Nuevo Admin</button>
-            <button onClick={() => setActiveTab('piar-enroll')} className="p-10 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-xs shadow-xl">Gestión PIAR</button>
+          <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fadeIn">
+            <div className="bg-white p-16 rounded-[4rem] shadow-premium border-2 border-gray-50 max-w-5xl w-full text-center">
+               <h2 className="text-5xl font-black text-school-green-dark uppercase italic mb-10">SICONITCC 2026</h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button onClick={() => setActiveTab('convivencia')} className="p-8 bg-school-green text-white rounded-[2rem] font-black uppercase text-xs shadow-lg hover:scale-105 transition-all">Gestión Convivencia</button>
+                  <button onClick={() => setActiveTab('piar-enroll')} className="p-8 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-xs shadow-lg hover:scale-105 transition-all">Módulo PIAR</button>
+               </div>
+            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <div className="w-64 bg-school-green-dark h-full p-4">
-        <Sidebar title="SICONITCC" items={[
+    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] relative">
+      {/* SIDEBAR IZQUIERDO: GESTIÓN */}
+      <div className={`transition-all duration-300 ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full shadow-2xl z-30`}>
+        <Sidebar title="Gestión" items={[
           { id: 'overview', label: 'Inicio', icon: 'fa-home' },
           { id: 'course-management', label: 'Gestión Académica', icon: 'fa-school' },
           { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
-          { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
-          { id: 'piar-enroll', label: 'PIAR', icon: 'fa-heart' }
-        ]} activeId={activeTab} onSelect={setActiveTab} color="school-green" onToggle={()=>{}} />
+          { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
+          { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' }
+        ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" />
       </div>
-      <div className="flex-grow p-10 overflow-y-auto">
+
+      {/* CONTENIDO CENTRAL */}
+      <div className="flex-grow overflow-y-auto p-8 h-full relative z-10 custom-scrollbar">
+        {!leftVisible && (
+          <button onClick={() => setLeftVisible(true)} className="absolute left-0 top-1/2 bg-school-green text-white p-2 rounded-r-xl shadow-lg z-50">
+            <i className="fas fa-chevron-right text-xs"></i>
+          </button>
+        )}
         {renderContent()}
+        {!rightVisible && (
+          <button onClick={() => setRightVisible(true)} className="absolute right-0 top-1/2 bg-school-yellow text-school-green-dark p-2 rounded-l-xl shadow-lg z-50">
+            <i className="fas fa-chevron-left text-xs"></i>
+          </button>
+        )}
+      </div>
+
+      {/* SIDEBAR DERECHO: PIAR */}
+      <div className={`transition-all duration-300 ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full shadow-2xl z-30`}>
+        <Sidebar title="PIAR" items={[
+            { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
+            { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
+            { id: 'piar-actas', label: 'Actas de Acuerdo', icon: 'fa-file-signature' }
+          ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" />
       </div>
     </div>
   );
