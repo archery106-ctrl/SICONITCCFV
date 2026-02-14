@@ -10,6 +10,7 @@ interface StudentDB extends Student {
   fatherName?: string;
   birthDate?: string;
   address?: string;
+  age?: string; 
 }
 
 const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
@@ -68,7 +69,38 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     }
   };
 
-  // --- VISTA ANEXO 1: INSCRIPCIÓN ---
+  const handleFormalizarActa = async () => {
+    if (!actaData.equipo_directivo) return alert("Por favor ingrese el equipo directivo.");
+    
+    const student = students.find((s: Student) => s.id === actaData.estudiante_id) as any;
+    
+    const payload = {
+      estudiante_id: actaData.estudiante_id,
+      fecha: actaData.fecha,
+      nombre_estudiante: student?.name || '',
+      identificacion: student?.documentNumber || '',
+      edad: student?.age || '', // Rollup ahora lo encontrará como 'any' sin romperse
+      equipo_directivo: actaData.equipo_directivo,
+      nombre_madre: actaData.nombre_madre,
+      nombre_padre: actaData.nombre_padre,
+      institucion: 'I.E.D. Instituto Técnico Comercial de Capellanía',
+      parentesco_madre: 'Madre',
+      parentesco_padre: 'Padre'
+    };
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('actas_acuerdo_piar').upsert([payload]);
+      if (error) throw error;
+      alert("✅ Anexo 3 Formalizado");
+      setIsActaModalOpen(false);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (activeSubTab === 'piar-enroll') {
     const filteredStudents = students.filter((s: Student) => (s as StudentDB).courseId === selectedCourseId);
     return (
@@ -123,7 +155,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
-  // --- VISTA ANEXO 3: ACTA DE ACUERDOS (BOTÓN INDEPENDIENTE) ---
   if (activeSubTab === 'piar-actas') {
     return (
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-8 min-h-[500px]">
@@ -153,7 +184,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
                   <input placeholder="Nombres del Equipo Directivo" className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold outline-none" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
                   <div className="flex gap-4">
                       <button onClick={() => setIsActaModalOpen(false)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black uppercase text-xs text-gray-400">Cancelar</button>
-                      <button onClick={async () => { await supabase.from('actas_acuerdo_piar').upsert([actaData]); alert("✅ Anexo 3 Formalizado"); setIsActaModalOpen(false); }} className="flex-1 py-5 bg-school-green text-white rounded-2xl font-black uppercase text-xs shadow-xl">Formalizar Acta</button>
+                      <button onClick={handleFormalizarActa} className="flex-1 py-5 bg-school-green text-white rounded-2xl font-black uppercase text-xs shadow-xl">Formalizar Acta</button>
                   </div>
               </div>
           </div>
@@ -162,7 +193,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
-  // --- VISTA REVISIÓN: INFORMES POR COMPETENCIAS (BOTÓN REVISIÓN) ---
   if (activeSubTab === 'piar-review') {
     const uniqueCompetencyStudents = Array.from(new Set(competencyReports.map((r: any) => r.studentId))).map(id => competencyReports.find((r: any) => r.studentId === id));
     return (
@@ -189,7 +219,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
-  // --- VISTA ANEXO 2: SEGUIMIENTO ---
   const uniqueAjustesStudents = Array.from(new Set(piarRecords.map((r: any) => r.studentId))).map(id => piarRecords.find((r: any) => r.studentId === id));
 
   return (

@@ -53,6 +53,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'about-us': return <AboutUsView />;
       case 'piar-enroll':
       case 'piar-follow':
+      case 'piar-actas': 
       case 'piar-review':
         return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
       default:
@@ -111,6 +112,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           items={[
             { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
             { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
+            { id: 'piar-actas', label: 'Actas de Acuerdo', icon: 'fa-file-signature' },
             { id: 'piar-review', label: 'Revisión', icon: 'fa-calendar-check' }
           ]} 
           activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" showLogo={false} className="no-print"
@@ -120,82 +122,75 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   );
 };
 
-// --- COMPONENTE INSERTAR ADMIN CON LISTADO ---
+// --- COMPONENTES AUXILIARES ---
+
 const InsertAdminForm: React.FC = () => {
-  const [admins, setAdmins] = useState<any[]>([]);
-  const [formData, setFormData] = useState({ nombre: '', email: '', cargo: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [cargo, setCargo] = useState('');
 
-  const fetchAdmins = async () => {
-    const { data } = await supabase.from('perfiles_usuarios').select('*').eq('rol', 'administrator');
-    setAdmins(data || []);
-  };
-
-  useEffect(() => { fetchAdmins(); }, []);
-
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('perfiles_usuarios').insert([{ 
-      nombre_completo: formData.nombre, 
-      email: formData.email, 
-      cargo: formData.cargo,
-      password: formData.password,
-      rol: 'administrator' 
-    }]);
-    if (!error) {
-      alert("✅ Administrador registrado.");
-      setFormData({ nombre: '', email: '', cargo: '', password: '' });
-      fetchAdmins();
+    setLoading(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email, password, options: { data: { full_name: name, role: 'admin', cargo } }
+      });
+      if (authError) throw authError;
+      if (authData.user) {
+        await supabase.from('perfiles_usuarios').insert([{ id: authData.user.id, nombre_completo: name, email, rol: 'admin', cargo }]);
+        alert('✅ Administrador creado con éxito');
+        setEmail(''); setPassword(''); setName(''); setCargo('');
+      }
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border-t-8 border-purple-600">
-        <h3 className="text-2xl font-black text-purple-600 uppercase mb-8 italic">Nuevo Administrador 🔐</h3>
-        <form onSubmit={handleCreate} className="space-y-4">
-          <input required placeholder="Nombre Completo" className="w-full p-4 border rounded-2xl font-bold" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
-          <input required placeholder="Cargo / Función" className="w-full p-4 border rounded-2xl font-bold" value={formData.cargo} onChange={e => setFormData({...formData, cargo: e.target.value})} />
-          <input required type="email" placeholder="Email Institucional" className="w-full p-4 border rounded-2xl font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-          <input required type="password" placeholder="Contraseña de Acceso" className="w-full p-4 border rounded-2xl font-bold" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-          <button type="submit" className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Registrar</button>
-        </form>
-      </div>
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
-        <h3 className="text-xl font-black text-gray-800 uppercase mb-6 flex items-center gap-2">Lista de Admins <i className="fas fa-shield-alt text-purple-600"></i></h3>
-        <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
-          {admins.map((adm, idx) => (
-            <div key={idx} className="p-4 bg-gray-50 rounded-2xl border flex justify-between items-center">
-               <div>
-                 <p className="font-black text-xs text-school-green-dark uppercase">{adm.nombre_completo}</p>
-                 <p className="text-[10px] font-bold text-gray-400">{adm.cargo || 'Administrador'}</p>
-               </div>
-               <i className="fas fa-check-circle text-green-500"></i>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="bg-white p-10 rounded-[3rem] shadow-premium max-w-2xl mx-auto border border-gray-100 animate-fadeIn">
+      <h2 className="text-3xl font-black text-purple-700 mb-8 uppercase tracking-tight">Nuevo Administrador</h2>
+      <form onSubmit={handleCreateAdmin} className="space-y-6">
+        <input required placeholder="Nombre Completo" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={name} onChange={e => setName(e.target.value)} />
+        <input required placeholder="Cargo (Ej: Rector, Coordinador)" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={cargo} onChange={e => setCargo(e.target.value)} />
+        <input required type="email" placeholder="Correo Electrónico" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={email} onChange={e => setEmail(e.target.value)} />
+        <input required type="password" placeholder="Contraseña" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={password} onChange={e => setPassword(e.target.value)} />
+        <button disabled={loading} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-purple-700 transition-all">
+          {loading ? 'Procesando...' : 'Crear Acceso Administrativo'}
+        </button>
+      </form>
     </div>
   );
 };
 
-// --- COMPONENTE ABOUT US CON DISEÑO Y EMOTICONES ---
 const AboutUsView: React.FC = () => (
-  <div className="bg-white p-12 rounded-[4rem] shadow-premium max-w-4xl mx-auto text-center border-2 border-school-yellow/20 animate-fadeIn">
-    <h2 className="text-4xl font-black text-school-green-dark uppercase italic tracking-tighter mb-10">SICONITCC INSTITUCIONAL 🚀</h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-       <div className="p-8 bg-gray-50 rounded-[2.5rem] shadow-inner border border-white">
-          <p className="text-[10px] font-black text-school-green uppercase mb-4 tracking-widest">🧪 Investigadores</p>
-          <p className="text-xl font-black text-gray-800 uppercase leading-tight">Patrick Y. Cañón &<br/>Denys E. García</p>
-       </div>
-       <div className="p-8 bg-school-green-dark rounded-[2.5rem] shadow-xl text-white">
-          <p className="text-[10px] font-black text-school-yellow uppercase mb-4 tracking-widest">💻 Diseño Web</p>
-          <p className="text-xl font-black uppercase tracking-widest">Patrick Y. Cañón</p>
-       </div>
+  <div className="bg-white p-12 rounded-[4rem] shadow-premium border border-gray-50 max-w-4xl mx-auto text-center animate-fadeIn">
+    <div className="mb-10 inline-block p-4 bg-school-green/10 rounded-full">
+      <i className="fas fa-microchip text-5xl text-school-green"></i>
     </div>
-    <div className="mt-12 flex justify-center gap-6 text-2xl">
-       <span>🎓</span><span>📖</span><span>⚖️</span><span>💻</span>
+    <h1 className="text-4xl font-black text-school-green-dark mb-6 uppercase tracking-tighter">SICONITCC V3.1</h1>
+    <p className="text-gray-500 font-medium leading-relaxed mb-10 text-lg italic">
+      "Innovación Tecnológica para la Excelencia Educativa en Capellanía"
+    </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+      <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
+        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Investigación y Desarrollo</h3>
+        <p className="text-gray-800 font-bold text-lg">Patrick Magister</p>
+        <p className="text-gray-400 text-sm font-black uppercase mt-2 italic">I.E.D. Capellanía</p>
+      </div>
+      <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
+        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Arquitectura Web y AI</h3>
+        <p className="text-gray-800 font-bold text-lg underline decoration-school-yellow decoration-4">Gemini 3 Flash</p>
+        <p className="text-gray-400 text-sm font-black uppercase mt-2">Paid Tier Collab</p>
+      </div>
     </div>
-    <p className="mt-8 text-[9px] font-bold text-gray-300 uppercase tracking-[0.5em]">IED Instituto Técnico Comercial de Capellanía © 2026</p>
+    <div className="mt-12 text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">
+      &copy; 2026 Todos los derechos reservados
+    </div>
   </div>
 );
 
