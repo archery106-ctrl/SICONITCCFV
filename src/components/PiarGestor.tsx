@@ -22,7 +22,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActaModalOpen, setIsActaModalOpen] = useState(false);
 
-  // --- ESTADO ANEXO 1: FOCALIZACIÓN ---
+  // --- ESTADOS ---
   const [formData, setFormData] = useState({
     quien_diligencia: '', cargo_diligencia: '', estudiante_id: '', sede: '', grado_id: '', 
     edad: '', fecha_nacimiento: '', tipo_documento: '', numero_documento: '', depto_vive: 'Cundinamarca', 
@@ -35,7 +35,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     nombre_cuidador: '', parentesco_cuidador: '', tel_cuidador: ''
   });
 
-  // --- ESTADO ANEXO 3: ACTA DE ACUERDOS ---
   const [actaData, setActaData] = useState({
     estudiante_id: '', fecha: new Date().toISOString().split('T')[0],
     equipo_directivo: '', nombre_madre: '', nombre_padre: ''
@@ -44,7 +43,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem('siconitcc_courses') || '[]');
     setCourses(stored);
-    if (activeSubTab !== 'piar-enroll') fetchAuditData();
+    fetchAuditData();
   }, [activeSubTab]);
 
   const fetchAuditData = async () => {
@@ -77,7 +76,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-12">
         <h2 className="text-3xl font-black text-school-green-dark uppercase italic border-b-4 border-school-yellow pb-2 inline-block">Anexo 1: Focalización Institucional</h2>
         <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await supabase.from('estudiantes_piar').insert([formData]); setLoading(false); alert("✅ Anexo 1 Guardado"); }} className="space-y-10">
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-school-yellow/10 p-8 rounded-[2rem] border border-school-yellow/20">
             <input required placeholder="Funcionario que diligencia" className="p-4 border rounded-2xl bg-white font-bold" value={formData.quien_diligencia} onChange={e => setFormData({...formData, quien_diligencia: e.target.value})} />
             <input required placeholder="Cargo" className="p-4 border rounded-2xl bg-white font-bold" value={formData.cargo_diligencia} onChange={e => setFormData({...formData, cargo_diligencia: e.target.value})} />
@@ -90,39 +88,33 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
               <select required className="p-4 border rounded-xl font-bold" value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}><option value="">Grado...</option>{courses.map((c: Course) => <option key={c.id} value={c.id}>{c.grade} - {c.sede}</option>)}</select>
               <select required className="p-4 border rounded-xl font-bold" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}><option value="">Estudiante...</option>{filteredStudents.map((s: Student) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-2">
+               <div className="flex flex-col"><span className="text-[10px] font-black text-gray-400 uppercase ml-2">Tipo Documento</span><input readOnly className="p-4 border rounded-2xl bg-white font-bold opacity-70" value={formData.tipo_documento} /></div>
+               <div className="flex flex-col"><span className="text-[10px] font-black text-gray-400 uppercase ml-2">Número Documento</span><input readOnly className="p-4 border rounded-2xl bg-white font-bold opacity-70" value={formData.numero_documento} /></div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {['centro_proteccion', 'registro_civil_gestion', 'grupo_etnico', 'victima_conflicto'].map(key => (
-                <div key={key} className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase text-blue-400 mb-1">{key.replace(/_/g, ' ')}</span>
-                  <select className="p-3 border rounded-xl font-bold" value={(formData as any)[key]} onChange={e => setFormData({...formData, [key]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
-                </div>
+                <div key={key} className="flex flex-col"><span className="text-[9px] font-black uppercase text-blue-400 mb-1">{key.replace(/_/g, ' ')}</span><select className="p-3 border rounded-xl font-bold" value={(formData as any)[key]} onChange={e => setFormData({...formData, [key]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select></div>
               ))}
             </div>
           </div>
 
           <div className="space-y-6">
             <h3 className="text-xl font-black text-school-green uppercase">2. Entorno Salud</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['afiliacion_salud', 'diagnostico_medico', 'consume_medicamentos'].map(key => (
-                <div key={key} className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase text-gray-400">{key.replace(/_/g, ' ')}</span>
-                  <select className="p-4 border rounded-xl font-bold" value={(formData as any)[key]} onChange={e => setFormData({...formData, [key]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-6 rounded-3xl">
+              <div className="flex flex-col gap-2"><span className="text-[9px] font-black uppercase text-gray-400">¿Tiene EPS?</span><select className="p-4 border rounded-xl font-bold" value={formData.afiliacion_salud} onChange={e => setFormData({...formData, afiliacion_salud: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select><input placeholder="Nombre EPS" className="p-3 border rounded-xl font-bold text-xs" value={formData.eps} onChange={e => setFormData({...formData, eps: e.target.value})} /></div>
+              <div className="flex flex-col gap-2"><span className="text-[9px] font-black uppercase text-gray-400">¿Diagnóstico Médico?</span><select className="p-4 border rounded-xl font-bold" value={formData.diagnostico_medico} onChange={e => setFormData({...formData, diagnostico_medico: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select><input placeholder="Cuál diagnóstico" className="p-3 border rounded-xl font-bold text-xs" value={formData.cual_diagnostico} onChange={e => setFormData({...formData, cual_diagnostico: e.target.value})} /></div>
+              <div className="flex flex-col gap-2"><span className="text-[9px] font-black uppercase text-gray-400">¿Recibe Terapias?</span><select className="p-4 border rounded-xl font-bold" value={formData.asiste_terapias} onChange={e => setFormData({...formData, asiste_terapias: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select><select className="p-3 border rounded-xl font-bold text-xs" value={formData.consume_medicamentos} onChange={e => setFormData({...formData, consume_medicamentos: e.target.value})}><option value="No">Medicamentos No</option><option value="Si">Medicamentos Si</option></select></div>
             </div>
-            <textarea placeholder="Especificar Diagnóstico, EPS y Terapias..." className="w-full p-6 border-2 border-gray-100 rounded-[2.5rem] font-bold h-32 outline-none" onChange={e => setFormData({...formData, cual_diagnostico: e.target.value})} />
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-xl font-black text-school-green uppercase">3. Entorno Hogar</h3>
+            <h3 className="text-xl font-black text-school-green uppercase">3. Entorno Hogar y Cuidador</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50 p-8 rounded-[3rem]">
-              <div className="space-y-4">
-                <input readOnly className="w-full p-4 border rounded-xl bg-white font-bold opacity-60" value={`Madre: ${formData.nombre_madre}`} />
-                <input placeholder="Ocupación de la madre" className="w-full p-4 border rounded-xl font-bold" onChange={e => setFormData({...formData, ocupacion_madre: e.target.value})} />
-              </div>
-              <div className="space-y-4">
-                <input readOnly className="w-full p-4 border rounded-xl bg-white font-bold opacity-60" value={`Padre: ${formData.nombre_padre}`} />
-                <input placeholder="Ocupación del padre" className="w-full p-4 border rounded-xl font-bold" onChange={e => setFormData({...formData, ocupacion_padre: e.target.value})} />
+              <div className="space-y-4"><input readOnly className="w-full p-4 border rounded-xl bg-white font-bold opacity-60 text-xs" value={`Madre: ${formData.nombre_madre}`} /><input placeholder="Ocupación Madre" className="w-full p-4 border rounded-xl font-bold text-xs" onChange={e => setFormData({...formData, ocupacion_madre: e.target.value})} /></div>
+              <div className="space-y-4"><input readOnly className="w-full p-4 border rounded-xl bg-white font-bold opacity-60 text-xs" value={`Padre: ${formData.nombre_padre}`} /><input placeholder="Ocupación Padre" className="w-full p-4 border rounded-xl font-bold text-xs" onChange={e => setFormData({...formData, ocupacion_padre: e.target.value})} /></div>
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-6 mt-2">
+                 <input placeholder="Nombre Cuidador" className="p-4 border rounded-xl bg-white font-bold text-xs" value={formData.nombre_cuidador} onChange={e => setFormData({...formData, nombre_cuidador: e.target.value})} /><input placeholder="Parentesco" className="p-4 border rounded-xl bg-white font-bold text-xs" value={formData.parentesco_cuidador} onChange={e => setFormData({...formData, parentesco_cuidador: e.target.value})} /><input placeholder="Teléfono" className="p-4 border rounded-xl bg-white font-bold text-xs" value={formData.tel_cuidador} onChange={e => setFormData({...formData, tel_cuidador: e.target.value})} />
               </div>
             </div>
           </div>
@@ -132,53 +124,45 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
-  // --- VISTA ANEXO 2 Y 3: SEGUIMIENTO Y ACUERDOS ---
-  const currentList = activeSubTab === 'piar-follow' ? piarRecords : competencyReports;
-  const uniqueStudents = Array.from(new Set(currentList.map((r: any) => r.studentId))).map(id => currentList.find((r: any) => r.studentId === id));
-
-  return (
-    <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn min-h-[500px]">
-      <div className="flex justify-between items-center mb-10 border-b-4 border-school-yellow pb-2">
-        <h2 className="text-3xl font-black text-school-green-dark uppercase italic">
-          {activeSubTab === 'piar-follow' ? 'Anexo 2: Seguimiento de Ajustes' : 'Revisión de Competencias'}
-        </h2>
-        {activeSubTab === 'piar-follow' && (
-          <button onClick={() => setIsActaModalOpen(true)} className="bg-school-yellow text-school-green-dark px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-premium border-2 border-school-yellow-dark hover:scale-105 transition-transform">
-            <i className="fas fa-file-signature mr-2"></i> Anexo 3: Acta de Acuerdo
-          </button>
-        )}
-      </div>
-
-      {loading ? (
-        <p className="text-center py-20 font-black text-gray-300 animate-pulse uppercase">Cargando...</p>
-      ) : uniqueStudents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-300">
-           <i className="fas fa-folder-open text-6xl mb-4 opacity-20"></i>
-           <p className="font-black uppercase tracking-widest text-sm">No se han hecho registros aún en esta sección</p>
+  // --- VISTA ANEXO 3: ACTA DE ACUERDOS (NUEVA SECCIÓN INDEPENDIENTE) ---
+  if (activeSubTab === 'piar-review') {
+    return (
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-8 min-h-[500px]">
+        <div className="flex justify-between items-center border-b-4 border-school-yellow pb-4">
+          <h2 className="text-3xl font-black text-school-green-dark uppercase italic tracking-tight">Anexo 3: Acta de Acuerdos</h2>
+          <span className="bg-school-yellow/20 text-school-green-dark px-4 py-1 rounded-full text-[10px] font-black uppercase">Formalización Institucional</span>
         </div>
-      ) : (
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {uniqueStudents.map((st: any) => (
-            <div key={st?.studentId} className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100 text-center hover:shadow-xl transition-all">
-              <h4 className="font-black text-gray-800 uppercase mb-4">{st?.studentName}</h4>
-              <button onClick={() => { setSelectedStudentRecords(currentList.filter((r: any) => r.studentId === st.studentId)); setIsModalOpen(true); }} className="w-full py-3 bg-school-green text-white rounded-xl font-black text-[10px] uppercase shadow-md">Ver Expediente (Anexo 2)</button>
+          {students.map((st: Student) => (
+            <div key={st.id} className="bg-gray-50 p-8 rounded-[2.5rem] border-2 border-dashed border-gray-200 flex flex-col items-center text-center space-y-4 hover:border-school-yellow transition-all">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm text-school-green-dark">
+                <i className="fas fa-file-signature text-2xl"></i>
+              </div>
+              <div>
+                <p className="font-black text-gray-800 uppercase text-xs">{st.name}</p>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{st.id.substring(0,8)}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setActaData({...actaData, estudiante_id: st.id, nombre_madre: (st as StudentDB).motherName || '', nombre_padre: (st as StudentDB).fatherName || ''});
+                  setIsActaModalOpen(true);
+                }}
+                className="w-full py-3 bg-school-yellow text-school-green-dark rounded-xl font-black text-[10px] uppercase shadow-md hover:scale-105 transition-transform"
+              >
+                Hacer Acta de Acuerdos
+              </button>
             </div>
           ))}
         </div>
-      )}
 
-      {/* MODAL ANEXO 3: ACTA DE ACUERDOS */}
-      {isActaModalOpen && (
+        {isActaModalOpen && (
           <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4">
-              <div className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow">
-                  <h3 className="text-2xl font-black uppercase text-school-green italic text-center">Diligenciar Anexo 3: Acta de Acuerdo</h3>
-                  <select className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold bg-gray-50 outline-none" onChange={(e) => {
-                      const s = students.find((st: Student) => st.id === e.target.value) as StudentDB;
-                      if(s) setActaData({...actaData, estudiante_id: s.id, nombre_madre: s.motherName || '', nombre_padre: s.fatherName || ''});
-                  }}>
-                    <option value="">Seleccionar Estudiante Focalizado...</option>
-                    {students.map((s: Student) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+              <div className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow animate-scaleIn">
+                  <h3 className="text-2xl font-black uppercase text-school-green italic text-center">Diligenciar Anexo 3</h3>
+                  <div className="bg-gray-50 p-4 rounded-2xl border text-center font-black uppercase text-xs text-gray-500">
+                    Estudiante: {students.find(s => s.id === actaData.estudiante_id)?.name}
+                  </div>
                   <input placeholder="Nombres del Equipo Directivo" className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold outline-none" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
                   <div className="flex gap-4">
                       <button onClick={() => setIsActaModalOpen(false)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black uppercase text-xs text-gray-400">Cancelar</button>
@@ -186,6 +170,36 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
                   </div>
               </div>
           </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- VISTA ANEXO 2: SEGUIMIENTO ---
+  const uniqueStudents = Array.from(new Set(piarRecords.map((r: any) => r.studentId))).map(id => piarRecords.find((r: any) => r.studentId === id));
+
+  return (
+    <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn min-h-[500px]">
+      <div className="flex justify-between items-center mb-10 border-b-4 border-school-yellow pb-2">
+        <h2 className="text-3xl font-black text-school-green-dark uppercase italic">Anexo 2: Seguimiento de Ajustes</h2>
+      </div>
+
+      {loading ? (
+        <p className="text-center py-20 font-black text-gray-300 animate-pulse uppercase">Cargando...</p>
+      ) : uniqueStudents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-gray-300">
+           <i className="fas fa-folder-open text-6xl mb-4 opacity-20"></i>
+           <p className="font-black uppercase tracking-widest text-sm">No se han hecho registros aún de ajustes (Anexo 2)</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {uniqueStudents.map((st: any) => (
+            <div key={st?.studentId} className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100 text-center hover:shadow-xl transition-all">
+              <h4 className="font-black text-gray-800 uppercase mb-4 text-xs">{st?.studentName}</h4>
+              <button onClick={() => { setSelectedStudentRecords(piarRecords.filter((r: any) => r.studentId === st.studentId)); setIsModalOpen(true); }} className="w-full py-3 bg-school-green text-white rounded-xl font-black text-[10px] uppercase shadow-md">Ver Expediente Ajustes</button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
