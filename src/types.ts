@@ -1,4 +1,3 @@
-
 export type UserRole = 'administrator' | 'teacher';
 
 export interface User {
@@ -13,7 +12,7 @@ export interface User {
 }
 
 export interface Student {
-  id: string;
+  id: string; // Documento de identidad
   name: string;
   grade: string;
   email: string;
@@ -21,16 +20,31 @@ export interface Student {
   isPiar?: boolean;
   address?: string;
   neighborhood?: string;
+  
+  // Campos Anexo 2 (Sincronizados con PiarGestor)
   motherName?: string;
+  motherOccupation?: string;
+  motherEducation?: string;
   motherPhone?: string;
   motherEmail?: string;
+  
   fatherName?: string;
+  fatherOccupation?: string;
+  fatherEducation?: string;
   fatherPhone?: string;
   fatherEmail?: string;
+  
+  caregiverName?: string;
+  caregiverRelation?: string;
+  caregiverEducation?: string;
+  caregiverPhone?: string;
+
   birthPlace?: string;
   birthDate?: string;
   age?: number;
-  idType?: string;
+  idType?: string; // tipo_documento
+  
+  // Salud
   eps?: string;
   regimen?: string;
   healthEmergencyPlace?: string;
@@ -43,20 +57,19 @@ export interface Student {
   consumesMedication?: boolean;
   medicationSchedule?: string;
   aidProducts?: string;
-  motherOccupation?: string;
-  motherEducation?: string;
-  fatherOccupation?: string;
-  fatherEducation?: string;
-  caregiverName?: string;
-  caregiverRelation?: string;
-  caregiverEducation?: string;
-  caregiverPhone?: string;
+  
+  // Focalización
   isProtectionCenter?: boolean;
   protectionCenterLocation?: string;
   isEthnicGroup?: boolean;
   ethnicGroupName?: string;
   isConflictVictim?: boolean;
   hasConflictRegistry?: boolean;
+  
+  // Compatibilidad con base de datos (snake_case opcional para Supabase)
+  documentType?: string; 
+  documentNumber?: string;
+  courseId?: string;
 }
 
 export interface Teacher {
@@ -75,6 +88,7 @@ export interface Course {
   id: string;
   grade: string;
   sede: string;
+  name?: string; // Nombre amigable para el select
 }
 
 export interface AcademicArea {
@@ -136,6 +150,7 @@ export interface PiarRecord {
   evaluationMethod: string;
   improvementStrategies: string;
   gestorObservations?: string;
+  observaciones_gestor?: string; // Alias para Supabase
   date: string;
   time?: string;
   sede: string;

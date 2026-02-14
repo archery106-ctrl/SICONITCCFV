@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Student, Teacher, Course, AcademicArea, Subject } from '../types';
 import Sidebar from './Sidebar';
-import PiarGestor from './PiarGestor';
+import PiarGestor from './PiarGestor'; // <--- Verificado
 import StatsView from './StatsView';
 import StudentForm from './StudentForm';
 import TeacherForm from './TeacherForm';
@@ -53,7 +53,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'course-management': return <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={areas} subjects={subjects} />;
       
-      // MÓDULO CONVIVENCIA: Forzamos orientación horizontal para el reporte
+      // APLICAMOS LA CLASE PARA MÁRGENES E INFORME HORIZONTAL
       case 'convivencia': 
         return (
           <div className="landscape-report">
@@ -66,10 +66,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'passwords': return <PasswordManagement teachers={teachers} />;
       case 'about-us': return <AboutUs />;
       
+      // UNIFICACIÓN DEL FLUJO PIAR (USANDO EL COMPONENTE QUE ME PASASTE)
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-review':
-        // PIAR se mantiene en vertical por defecto
         return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
         
       default:
@@ -79,7 +79,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] font-sans">
-      {/* Sidebar Izquierdo: Oculto en impresión */}
       <div className={`transition-all duration-300 ease-in-out no-print ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} relative bg-school-green-dark`}>
         <Sidebar 
           title="Administración" 
@@ -106,13 +105,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       {!leftVisible && (
         <button 
           onClick={() => setLeftVisible(true)}
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-green text-white rounded-r-xl shadow-xl z-50 hover:bg-school-green-dark transition-all no-print"
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-green text-white rounded-r-xl shadow-xl z-50 no-print"
         >
           <i className="fas fa-chevron-right text-xs"></i>
         </button>
       )}
 
-      {/* Contenedor Principal: Se ajusta el padding en impresión para usar el margen de 2.5cm de App.tsx */}
+      {/* CONTENEDOR CON AJUSTE DE PADDING PARA IMPRESIÓN */}
       <div className="flex-grow overflow-y-auto custom-scrollbar p-4 md:p-8 print:p-0">
         {renderContent()}
       </div>
@@ -120,13 +119,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       {!rightVisible && (
         <button 
           onClick={() => setRightVisible(true)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-yellow text-school-green-dark rounded-l-xl shadow-xl z-50 hover:bg-school-yellow-dark transition-all no-print"
+          className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-12 bg-school-yellow text-school-green-dark rounded-l-xl shadow-xl z-50 no-print"
         >
           <i className="fas fa-chevron-left text-xs"></i>
         </button>
       )}
 
-      {/* Sidebar Derecho (PIAR): Oculto en impresión */}
       <div className={`transition-all duration-300 ease-in-out no-print ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} relative bg-school-yellow`}>
         <Sidebar 
           title="Gestor PIAR" 
@@ -147,4 +145,5 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   );
 };
 
-// ... (El resto de componentes InsertAdminForm, AboutUs y WelcomeView se mantienen iguales)
+// ... (Resto de componentes InsertAdminForm, AboutUs, WelcomeView igual)
+export default AdminDashboard;
