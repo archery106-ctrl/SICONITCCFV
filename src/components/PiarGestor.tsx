@@ -22,7 +22,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActaModalOpen, setIsActaModalOpen] = useState(false);
 
-  // --- ESTADOS ---
   const [formData, setFormData] = useState({
     quien_diligencia: '', cargo_diligencia: '', estudiante_id: '', sede: '', grado_id: '', 
     edad: '', fecha_nacimiento: '', tipo_documento: '', numero_documento: '', depto_vive: 'Cundinamarca', 
@@ -124,31 +123,21 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
-  // --- VISTA ANEXO 3: ACTA DE ACUERDOS (NUEVA SECCIÓN INDEPENDIENTE) ---
-  if (activeSubTab === 'piar-review') {
+  // --- VISTA ANEXO 3: ACTA DE ACUERDOS (BOTÓN INDEPENDIENTE) ---
+  if (activeSubTab === 'piar-actas') {
     return (
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-8 min-h-[500px]">
-        <div className="flex justify-between items-center border-b-4 border-school-yellow pb-4">
-          <h2 className="text-3xl font-black text-school-green-dark uppercase italic tracking-tight">Anexo 3: Acta de Acuerdos</h2>
-          <span className="bg-school-yellow/20 text-school-green-dark px-4 py-1 rounded-full text-[10px] font-black uppercase">Formalización Institucional</span>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <h2 className="text-3xl font-black text-school-green-dark uppercase italic border-b-4 border-school-yellow pb-4">Anexo 3: Acta de Acuerdos</h2>
+        <div className="space-y-3">
           {students.map((st: Student) => (
-            <div key={st.id} className="bg-gray-50 p-8 rounded-[2.5rem] border-2 border-dashed border-gray-200 flex flex-col items-center text-center space-y-4 hover:border-school-yellow transition-all">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm text-school-green-dark">
-                <i className="fas fa-file-signature text-2xl"></i>
-              </div>
-              <div>
-                <p className="font-black text-gray-800 uppercase text-xs">{st.name}</p>
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{st.id.substring(0,8)}</p>
-              </div>
+            <div key={st.id} className="flex justify-between items-center p-6 bg-gray-50 rounded-2xl border hover:bg-white transition-all">
+              <span className="font-black text-gray-800 uppercase text-xs">{st.name}</span>
               <button 
                 onClick={() => {
                   setActaData({...actaData, estudiante_id: st.id, nombre_madre: (st as StudentDB).motherName || '', nombre_padre: (st as StudentDB).fatherName || ''});
                   setIsActaModalOpen(true);
                 }}
-                className="w-full py-3 bg-school-yellow text-school-green-dark rounded-xl font-black text-[10px] uppercase shadow-md hover:scale-105 transition-transform"
+                className="bg-school-yellow text-school-green-dark px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-sm"
               >
                 Hacer Acta de Acuerdos
               </button>
@@ -160,9 +149,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
           <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow animate-scaleIn">
                   <h3 className="text-2xl font-black uppercase text-school-green italic text-center">Diligenciar Anexo 3</h3>
-                  <div className="bg-gray-50 p-4 rounded-2xl border text-center font-black uppercase text-xs text-gray-500">
-                    Estudiante: {students.find(s => s.id === actaData.estudiante_id)?.name}
-                  </div>
+                  <div className="bg-gray-50 p-4 rounded-2xl border text-center font-black text-xs text-gray-500 uppercase">Estudiante: {students.find(s => s.id === actaData.estudiante_id)?.name}</div>
                   <input placeholder="Nombres del Equipo Directivo" className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold outline-none" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
                   <div className="flex gap-4">
                       <button onClick={() => setIsActaModalOpen(false)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black uppercase text-xs text-gray-400">Cancelar</button>
@@ -175,32 +162,56 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
     );
   }
 
+  // --- VISTA REVISIÓN: INFORMES POR COMPETENCIAS (BOTÓN REVISIÓN) ---
+  if (activeSubTab === 'piar-review') {
+    const uniqueCompetencyStudents = Array.from(new Set(competencyReports.map((r: any) => r.studentId))).map(id => competencyReports.find((r: any) => r.studentId === id));
+    return (
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn min-h-[500px]">
+        <h2 className="text-3xl font-black text-school-green-dark uppercase italic border-b-4 border-school-yellow pb-4 mb-8">Revisión de Competencias</h2>
+        <div className="space-y-3">
+          {uniqueCompetencyStudents.length === 0 ? (
+             <p className="text-center py-10 text-gray-300 font-black uppercase text-xs">No hay informes de competencias cargados</p>
+          ) : (
+            uniqueCompetencyStudents.map((st: any) => (
+              <div key={st.studentId} className="flex justify-between items-center p-6 bg-gray-50 rounded-2xl border hover:bg-white transition-all">
+                <span className="font-black text-gray-800 uppercase text-xs">{st.studentName}</span>
+                <button 
+                  onClick={() => { setSelectedStudentRecords(competencyReports.filter((r: any) => r.studentId === st.studentId)); setIsModalOpen(true); }}
+                  className="bg-school-green text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-sm"
+                >
+                  Revisar Informe
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // --- VISTA ANEXO 2: SEGUIMIENTO ---
-  const uniqueStudents = Array.from(new Set(piarRecords.map((r: any) => r.studentId))).map(id => piarRecords.find((r: any) => r.studentId === id));
+  const uniqueAjustesStudents = Array.from(new Set(piarRecords.map((r: any) => r.studentId))).map(id => piarRecords.find((r: any) => r.studentId === id));
 
   return (
     <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn min-h-[500px]">
-      <div className="flex justify-between items-center mb-10 border-b-4 border-school-yellow pb-2">
-        <h2 className="text-3xl font-black text-school-green-dark uppercase italic">Anexo 2: Seguimiento de Ajustes</h2>
-      </div>
-
-      {loading ? (
-        <p className="text-center py-20 font-black text-gray-300 animate-pulse uppercase">Cargando...</p>
-      ) : uniqueStudents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-300">
-           <i className="fas fa-folder-open text-6xl mb-4 opacity-20"></i>
-           <p className="font-black uppercase tracking-widest text-sm">No se han hecho registros aún de ajustes (Anexo 2)</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {uniqueStudents.map((st: any) => (
-            <div key={st?.studentId} className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100 text-center hover:shadow-xl transition-all">
-              <h4 className="font-black text-gray-800 uppercase mb-4 text-xs">{st?.studentName}</h4>
-              <button onClick={() => { setSelectedStudentRecords(piarRecords.filter((r: any) => r.studentId === st.studentId)); setIsModalOpen(true); }} className="w-full py-3 bg-school-green text-white rounded-xl font-black text-[10px] uppercase shadow-md">Ver Expediente Ajustes</button>
+      <h2 className="text-3xl font-black text-school-green-dark uppercase italic border-b-4 border-school-yellow pb-4 mb-8">Anexo 2: Seguimiento de Ajustes</h2>
+      <div className="space-y-3">
+        {uniqueAjustesStudents.length === 0 ? (
+          <p className="text-center py-10 text-gray-300 font-black uppercase text-xs">No hay registros de ajustes (Anexo 2)</p>
+        ) : (
+          uniqueAjustesStudents.map((st: any) => (
+            <div key={st?.studentId} className="flex justify-between items-center p-6 bg-gray-50 rounded-2xl border hover:bg-white transition-all">
+              <span className="font-black text-gray-800 uppercase text-xs">{st?.studentName}</span>
+              <button 
+                onClick={() => { setSelectedStudentRecords(piarRecords.filter((r: any) => r.studentId === st.studentId)); setIsModalOpen(true); }} 
+                className="bg-school-green text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-md"
+              >
+                Ver Expediente
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 };
