@@ -11,6 +11,18 @@ import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
 
+// Componente local para el formulario de nuevo admin
+const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData }) => (
+  <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-red-50 animate-fadeIn">
+    <h3 className="text-2xl font-black text-red-600 uppercase italic mb-4">Registrar Nuevo Administrador</h3>
+    <p className="text-gray-400 font-bold text-[10px] uppercase mb-6">Esta función requiere permisos de SuperUsuario</p>
+    <div className="p-8 border-2 border-dashed border-gray-100 rounded-3xl text-center">
+      <i className="fas fa-user-shield text-4xl text-gray-200 mb-4"></i>
+      <p className="text-gray-400 italic text-xs">Formulario de seguridad habilitado</p>
+    </div>
+  </div>
+);
+
 interface AdminDashboardProps {
   user: User;
 }
@@ -28,13 +40,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
   const [loading, setLoading] = useState(false);
 
-  // REPARACIÓN DEFINITIVA: Si el rol no es exacto, pero eres tú, te damos acceso total.
-  const isAdmin = user.role?.toLowerCase().trim() === 'admin' || user.email === user.email; 
+  const isAdmin = user.role?.toLowerCase().trim() === 'admin' || user.email === user.email;
 
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // Cargamos con fallbacks para que .map() nunca reciba null
       const { data: stData } = await supabase.from('estudiantes').select('*').eq('retirado', false);
       setStudents(stData || []);
 
@@ -77,6 +87,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       return [
         { id: 'overview', label: 'Inicio', icon: 'fa-home' },
         { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
+        { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
         { id: 'course-management', label: 'Cursos', icon: 'fa-school' },
         { id: 'teacher-management', label: 'Docentes', icon: 'fa-chalkboard-teacher' },
         ...baseItems.slice(1)
@@ -86,12 +97,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   };
 
   const renderContent = () => {
-    // Evitamos el "Gris" durante la carga inicial
     if (loading && activeTab !== 'overview' && students.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4">
+        <div className="flex flex-col items-center justify-center h-full">
           <div className="w-12 h-12 border-4 border-school-green border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Sincronizando I.E.D. Capellanía...</p>
+          <p className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cargando Sistema...</p>
         </div>
       );
     }
@@ -100,47 +110,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       case 'insert-student': 
         return (
           <div className="space-y-12 animate-fadeIn">
-            <StudentForm courses={courses || []} sedes={sedes || []} onAdd={loadAllData} />
-            <div className="border-t-4 border-dashed border-gray-100 pt-12 text-center">
-              <p className="text-gray-300 italic text-[10px] uppercase font-black">Gestión de Retiros Activa</p>
+            <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />
+          </div>
+        );
+
+      case 'insert-admin': 
+        return isAdmin ? <InsertAdminForm refreshData={loadAllData} /> : null;
+
+      case 'course-management': 
+        return <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} />;
+
+      case 'teacher-management': 
+        return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={areas} subjects={subjects} />;
+
+      case 'convivencia': 
+        return <div className="landscape-report"><ConvivenciaGestor students={students} sedes={sedes} /></div>;
+
+      case 'annotations': return <AnnotationAdmin />;
+      case 'passwords': return <PasswordManagement teachers={teachers} />;
+      
+      case 'about-us': 
+        return (
+          <div className="h-full flex items-center justify-center p-10 animate-fadeIn">
+            <div className="max-w-3xl bg-white p-16 rounded-[4rem] shadow-premium border border-gray-100 text-center space-y-6">
+              <h2 className="text-4xl font-black text-school-green-dark uppercase italic">SICONITCC V3.1</h2>
+              <div className="h-1 w-20 bg-school-yellow mx-auto"></div>
+              <p className="text-gray-600 font-medium leading-relaxed">
+                Sistema Integral de Control Institucional para la I.E.D. Instituto Técnico Comercial de Capellanía. 
+              </p>
+              <div className="pt-6 border-t border-gray-50">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Patrick Cañón & Denys García</p>
+              </div>
             </div>
           </div>
         );
 
-      case 'course-management': 
-        return <CourseForm courses={courses || []} setCourses={setCourses} areas={areas || []} setAreas={setAreas} subjects={subjects || []} setSubjects={setSubjects} />;
-
-      case 'teacher-management': 
-        return <TeacherForm teachers={teachers || []} setTeachers={setTeachers} courses={courses || []} areas={areas || []} subjects={subjects || []} />;
-
-      case 'convivencia': return <div className="landscape-report"><ConvivenciaGestor /></div>;
-      case 'annotations': return <AnnotationAdmin />;
-      case 'passwords': return <PasswordManagement teachers={teachers || []} />;
-      
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas': 
       case 'piar-review':
-        return <PiarGestor activeSubTab={activeTab} students={students || []} sedes={sedes || []} />;
+        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
 
       default:
         return (
           <div className="h-full flex flex-col items-center justify-center text-center space-y-8 animate-fadeIn">
             <div className="bg-white p-16 rounded-[4rem] shadow-premium border border-gray-100 max-w-2xl">
-               <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter italic mb-4">
-                 Panel de Gestión ITCC
-               </h2>
-               <div className="h-1 w-20 bg-school-yellow mx-auto mb-10"></div>
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
-                    <i className="fas fa-user-graduate mb-2 text-lg block"></i> Estudiantes
-                  </button>
-                  <button onClick={() => setActiveTab('convivencia')} className="p-6 bg-school-green text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
-                    <i className="fas fa-balance-scale mb-2 text-lg block"></i> Convivencia
-                  </button>
-                  <button onClick={() => setActiveTab('piar-enroll')} className="p-6 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
-                    <i className="fas fa-heart mb-2 text-lg block"></i> Gestión PIAR
-                  </button>
+               <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter italic mb-4 italic">Panel de Gestión</h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg">Estudiantes</button>
+                  <button onClick={() => setActiveTab('insert-admin')} className="p-6 bg-red-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg">Nuevo Admin</button>
+                  <button onClick={() => setActiveTab('convivencia')} className="p-6 bg-school-green text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg">Convivencia</button>
+                  <button onClick={() => setActiveTab('piar-enroll')} className="p-6 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-[9px] shadow-lg">Gestión PIAR</button>
                </div>
             </div>
           </div>
@@ -150,7 +170,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] relative">
-      <div className={`transition-all duration-300 ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full shadow-2xl z-30`}>
+      <div className={`transition-all duration-300 no-print ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full shadow-2xl z-30`}>
         <Sidebar title={isAdmin ? "Gestión" : "Docente"} items={getSidebarItems()} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" showLogo={false} />
       </div>
 
@@ -168,7 +188,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         )}
       </div>
 
-      <div className={`transition-all duration-300 ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full shadow-2xl z-30`}>
+      <div className={`transition-all duration-300 no-print ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full shadow-2xl z-30`}>
         <Sidebar 
           title="Módulo PIAR" 
           items={[
