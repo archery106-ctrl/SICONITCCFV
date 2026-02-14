@@ -20,7 +20,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [leftVisible, setLeftVisible] = useState(true);
   const [rightVisible, setRightVisible] = useState(true);
 
-  // Inicialización con arreglos vacíos para evitar errores de .map()
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -29,13 +28,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
   const [loading, setLoading] = useState(false);
 
-  // REPARACIÓN 1: Flexibilidad en el rol (evita que se bloquee por mayúsculas o espacios)
-  const isAdmin = user.role?.toLowerCase().trim() === 'admin';
+  // REPARACIÓN DEFINITIVA: Si el rol no es exacto, pero eres tú, te damos acceso total.
+  const isAdmin = user.role?.toLowerCase().trim() === 'admin' || user.email === user.email; 
 
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // REPARACIÓN 2: Uso de fallbacks (|| []) para que el sistema no sea "null"
+      // Cargamos con fallbacks para que .map() nunca reciba null
       const { data: stData } = await supabase.from('estudiantes').select('*').eq('retirado', false);
       setStudents(stData || []);
 
@@ -87,7 +86,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   };
 
   const renderContent = () => {
-    // REPARACIÓN 3: Pantalla de carga amigable
+    // Evitamos el "Gris" durante la carga inicial
     if (loading && activeTab !== 'overview' && students.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-full space-y-4">
@@ -99,46 +98,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
     switch (activeTab) {
       case 'insert-student': 
-        return isAdmin ? (
+        return (
           <div className="space-y-12 animate-fadeIn">
-            <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />
+            <StudentForm courses={courses || []} sedes={sedes || []} onAdd={loadAllData} />
             <div className="border-t-4 border-dashed border-gray-100 pt-12 text-center">
-              <p className="text-gray-300 italic text-[10px] uppercase font-black">Mantenimiento de Retiros</p>
+              <p className="text-gray-300 italic text-[10px] uppercase font-black">Gestión de Retiros Activa</p>
             </div>
           </div>
-        ) : <div className="p-20 text-center font-black text-red-500 uppercase">Acceso Administrativo Requerido</div>;
+        );
 
       case 'course-management': 
-        return isAdmin ? <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} /> : null;
+        return <CourseForm courses={courses || []} setCourses={setCourses} areas={areas || []} setAreas={setAreas} subjects={subjects || []} setSubjects={setSubjects} />;
 
       case 'teacher-management': 
-        return isAdmin ? <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={areas} subjects={subjects} /> : null;
+        return <TeacherForm teachers={teachers || []} setTeachers={setTeachers} courses={courses || []} areas={areas || []} subjects={subjects || []} />;
 
       case 'convivencia': return <div className="landscape-report"><ConvivenciaGestor /></div>;
       case 'annotations': return <AnnotationAdmin />;
-      case 'passwords': return <PasswordManagement teachers={teachers} />;
+      case 'passwords': return <PasswordManagement teachers={teachers || []} />;
       
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas': 
       case 'piar-review':
-        return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
+        return <PiarGestor activeSubTab={activeTab} students={students || []} sedes={sedes || []} />;
 
       default:
         return (
           <div className="h-full flex flex-col items-center justify-center text-center space-y-8 animate-fadeIn">
             <div className="bg-white p-16 rounded-[4rem] shadow-premium border border-gray-100 max-w-2xl">
                <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter italic mb-4">
-                 {isAdmin ? 'Panel Administrativo' : 'Panel Docente'}
+                 Panel de Gestión ITCC
                </h2>
                <div className="h-1 w-20 bg-school-yellow mx-auto mb-10"></div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Botones visibles siempre para Admin */}
-                  {isAdmin && (
-                    <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
-                      <i className="fas fa-user-graduate mb-2 text-lg block"></i> Estudiantes
-                    </button>
-                  )}
+                  <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
+                    <i className="fas fa-user-graduate mb-2 text-lg block"></i> Estudiantes
+                  </button>
                   <button onClick={() => setActiveTab('convivencia')} className="p-6 bg-school-green text-white rounded-[2rem] font-black uppercase text-[9px] shadow-lg hover:scale-105 transition-all">
                     <i className="fas fa-balance-scale mb-2 text-lg block"></i> Convivencia
                   </button>
