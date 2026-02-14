@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Student, Course, PiarRecord } from '../types';
 import { supabase } from '../lib/supabaseClient';
 
+// Definimos una interfaz extendida para que el compilador no se queje de las propiedades de la DB
+interface StudentDB extends Student {
+  courseId?: string;
+  documentNumber?: string;
+  documentType?: string;
+  motherName?: string;
+  fatherName?: string;
+  birthDate?: string;
+  address?: string;
+}
+
 const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -16,24 +27,56 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   const [isActaModalOpen, setIsActaModalOpen] = useState(false);
   const [currentActa, setCurrentActa] = useState<any>(null);
   const [actaData, setActaData] = useState({
-    estudiante_id: '', fecha: new Date().toISOString().split('T')[0],
+    estudiante_id: '', 
+    fecha: new Date().toISOString().split('T')[0],
     institucion: 'I.E.D. Instituto Técnico Comercial de Capellanía',
-    nombre_estudiante: '', identificacion: '', edad: '', equipo_directivo: '',
-    nombre_madre: '', parentesco_madre: 'Madre', nombre_padre: '', parentesco_padre: 'Padre'
+    nombre_estudiante: '', 
+    identificacion: '', 
+    edad: '', 
+    equipo_directivo: '',
+    nombre_madre: '', 
+    parentesco_madre: 'Madre', 
+    nombre_padre: '', 
+    parentesco_padre: 'Padre'
   });
 
   // --- ESTADO FORMULARIO INSCRIPCIÓN (ANEXO 2 COMPLETO) ---
   const [formData, setFormData] = useState({
-    quien_diligencia: '', cargo_diligencia: '',
-    estudiante_id: '', sede: '', grado_id: '', edad: '', fecha_nacimiento: '',
-    tipo_documento: '', numero_documento: '', depto_vive: 'Cundinamarca', municipio: '',
-    direccion: '', barrio_vereda: '', telefono: '', email: '', 
-    centro_proteccion: 'No', registro_civil_gestion: 'No', grupo_etnico: 'No', 
-    victima_conflicto: 'No', afiliacion_salud: 'No', eps: '', atendido_salud: 'No', 
-    diagnostico_medico: 'No', cual_diagnostico: '', asiste_terapias: 'No', 
-    tratamiento_enfermedad: 'No', consume_medicamentos: 'No', productos_apoyo: 'No',
-    nombre_madre: '', ocupacion_madre: '', nombre_padre: '', ocupacion_padre: '',
-    nombre_cuidador: '', parentesco_cuidador: '', tel_cuidador: ''
+    quien_diligencia: '', 
+    cargo_diligencia: '',
+    estudiante_id: '', 
+    sede: '', 
+    grado_id: '', 
+    edad: '', 
+    fecha_nacimiento: '',
+    tipo_documento: '', 
+    numero_documento: '', 
+    depto_vive: 'Cundinamarca', 
+    municipio: '',
+    direccion: '', 
+    barrio_vereda: '', 
+    telefono: '', 
+    email: '', 
+    centro_proteccion: 'No', 
+    registro_civil_gestion: 'No', 
+    grupo_etnico: 'No', 
+    victima_conflicto: 'No', 
+    afiliacion_salud: 'No', 
+    eps: '', 
+    atendido_salud: 'No', 
+    diagnostico_medico: 'No', 
+    cual_diagnostico: '', 
+    asiste_terapias: 'No', 
+    tratamiento_enfermedad: 'No', 
+    consume_medicamentos: 'No', 
+    productos_apoyo: 'No',
+    nombre_madre: '', 
+    ocupacion_madre: '', 
+    nombre_padre: '', 
+    ocupacion_padre: '',
+    nombre_cuidador: '', 
+    parentesco_cuidador: '', 
+    tel_cuidador: ''
   });
 
   useEffect(() => {
@@ -52,16 +95,17 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   };
 
   const handleStudentSelection = (id: string) => {
-    const s = students.find(st => st.id === id);
+    const s = students.find((st: Student) => st.id === id) as StudentDB;
     if (s) {
       setFormData(prev => ({
-        ...prev, estudiante_id: id,
-        tipo_documento: (s as any).documentType || '',
-        numero_documento: (s as any).documentNumber || '',
-        nombre_madre: (s as any).motherName || '',
-        nombre_padre: (s as any).fatherName || '',
-        fecha_nacimiento: (s as any).birthDate || '',
-        direccion: (s as any).address || ''
+        ...prev, 
+        estudiante_id: id,
+        tipo_documento: s.documentType || '',
+        numero_documento: s.documentNumber || '',
+        nombre_madre: s.motherName || '',
+        nombre_padre: s.fatherName || '',
+        fecha_nacimiento: s.birthDate || '',
+        direccion: s.address || ''
       }));
     }
   };
@@ -75,7 +119,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   };
 
   if (activeSubTab === 'piar-enroll') {
-    const filteredStudents = students.filter(s => s.courseId === selectedCourseId);
+    const filteredStudents = students.filter((s: Student) => (s as StudentDB).courseId === selectedCourseId);
     return (
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 animate-fadeIn space-y-12">
         <h2 className="text-3xl font-black text-school-green-dark uppercase italic border-b-4 border-school-yellow pb-2 inline-block">Anexo 2: Caracterización y Focalización PIAR</h2>
@@ -92,9 +136,9 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
           <div className="space-y-6">
             <h3 className="text-xl font-black text-school-green uppercase">1. Información de Identificación</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-6 rounded-2xl shadow-inner">
-              <select required className="p-4 border rounded-xl font-bold" value={formData.sede} onChange={e => setFormData({...formData, sede: e.target.value})}><option value="">Sede...</option>{sedes.map(s => <option key={s} value={s}>{s}</option>)}</select>
-              <select required className="p-4 border rounded-xl font-bold" value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}><option value="">Grado...</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-              <select required className="p-4 border rounded-xl font-bold" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}><option value="">Estudiante Focalizado...</option>{filteredStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+              <select required className="p-4 border rounded-xl font-bold" value={formData.sede} onChange={e => setFormData({...formData, sede: e.target.value})}><option value="">Sede...</option>{sedes.map((s: string) => <option key={s} value={s}>{s}</option>)}</select>
+              <select required className="p-4 border rounded-xl font-bold" value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}><option value="">Grado...</option>{courses.map((c: Course) => <option key={c.id} value={c.id}>{c.grade} - {c.sede}</option>)}</select>
+              <select required className="p-4 border rounded-xl font-bold" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}><option value="">Estudiante Focalizado...</option>{filteredStudents.map((s: Student) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -113,7 +157,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
               ].map(item => (
                 <div key={item.key} className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-blue-400 mb-1">{item.label}</span>
-                  <select className="p-3 border rounded-xl font-bold" onChange={e => setFormData({...formData, [item.key]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
+                  <select className="p-3 border rounded-xl font-bold" onChange={e => setFormData({...formData, [item.key as keyof typeof formData]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
                 </div>
               ))}
             </div>
@@ -130,7 +174,7 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
               ].map(item => (
                 <div key={item.key} className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-gray-400">{item.label}</span>
-                  <select className="p-4 border rounded-xl font-bold" onChange={e => setFormData({...formData, [item.key]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
+                  <select className="p-4 border rounded-xl font-bold" onChange={e => setFormData({...formData, [item.key as keyof typeof formData]: e.target.value})}><option value="No">No</option><option value="Si">Si</option></select>
                 </div>
               ))}
             </div>
@@ -158,14 +202,13 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
           </div>
 
           <button type="submit" className="w-full bg-school-green text-white py-6 rounded-[2.5rem] font-black text-xl shadow-premium hover:bg-school-green-dark transition-all">
-             GUARDAR FOCALIZACIÓN COMPLETA
+              GUARDAR FOCALIZACIÓN COMPLETA
           </button>
         </form>
       </div>
     );
   }
 
-  {/* SECCIÓN DE SEGUIMIENTO CON BOTÓN DE ACTA AL FINAL */}
   const currentList = activeSubTab === 'piar-follow' ? piarRecords : competencyReports;
   const uniqueStudents = Array.from(new Set(currentList.map((r: any) => r.studentId))).map(id => currentList.find((r: any) => r.studentId === id));
 
@@ -200,7 +243,6 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
         </div>
       )}
 
-      {/* MODAL EXPEDIENTE CON ACTA CONDICIONAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6">
           <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[3.5rem] p-12 relative shadow-2xl">
@@ -227,17 +269,16 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
         </div>
       )}
 
-      {/* MODAL GESTIÓN DE ACTA (SOLO PARA EL GESTOR) */}
       {isActaModalOpen && (
           <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4">
               <div className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow">
                   <h3 className="text-2xl font-black uppercase text-school-green italic text-center">Diligenciar Acta de Acuerdo</h3>
                   <select className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold bg-gray-50 outline-none" onChange={(e) => {
-                      const s = students.find(st => st.id === e.target.value);
-                      if(s) setActaData({...actaData, estudiante_id: s.id, nombre_estudiante: s.name, identificacion: (s as any).documentNumber, nombre_madre: (s as any).motherName, nombre_padre: (s as any).fatherName});
+                      const s = students.find((st: Student) => st.id === e.target.value) as StudentDB;
+                      if(s) setActaData({...actaData, estudiante_id: s.id, nombre_estudiante: s.name, identificacion: s.documentNumber || '', nombre_madre: s.motherName || '', nombre_padre: s.fatherName || ''});
                   }}>
                     <option value="">Seleccionar Estudiante Focalizado...</option>
-                    {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {students.map((s: Student) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                   <input placeholder="Nombres del Equipo Directivo" className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold outline-none" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
                   <div className="flex gap-4">

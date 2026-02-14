@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface SidebarItem {
@@ -16,6 +15,7 @@ interface SidebarProps {
   color: string;
   textColor?: string;
   showLogo?: boolean;
+  className?: string; // --- AÑADIDO PARA SOPORTAR 'no-print' ---
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -26,9 +26,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle,
   color,
   textColor = "text-white",
-  showLogo = true
+  showLogo = true,
+  className = "" // --- VALOR POR DEFECTO ---
 }) => {
   const isGreen = color === 'school-green';
+  
+  // Optimizamos las clases para que Rollup las rastree como strings constantes
   const bgColor = isGreen ? 'bg-school-green-dark' : 'bg-school-yellow';
   const accentColor = isGreen ? 'bg-white/5' : 'bg-school-green-dark/5';
   const activeClass = isGreen 
@@ -41,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const SCHOOL_IMG = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
 
   return (
-    <div className={`h-full flex flex-col ${bgColor} ${textColor} shadow-2xl w-64 transition-all duration-300 relative z-40 border-r border-black/5 font-sans`}>
+    <div className={`h-full flex flex-col ${bgColor} ${textColor} shadow-2xl w-64 transition-all duration-300 relative z-40 border-r border-black/5 font-sans ${className}`}>
       <div className={`p-4 flex flex-col items-center text-center border-b ${isGreen ? 'border-white/10' : 'border-black/10'}`}>
         {showLogo && (
           <div className="relative mb-2 group cursor-pointer">
@@ -64,7 +67,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className={`px-4 py-1.5 flex justify-between items-center bg-black/5`}>
         <div className="h-0.5 w-5 rounded-full bg-current opacity-20"></div>
         <button 
-          onClick={onToggle}
+          onClick={(e) => {
+            e.preventDefault();
+            onToggle();
+          }}
           className="w-6 h-6 rounded-lg hover:bg-current hover:bg-opacity-10 transition-all flex items-center justify-center group"
           title="Ocultar sección"
         >
@@ -76,7 +82,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         {items.map((item) => (
           <button
             key={item.id}
-            onClick={() => onSelect(item.id)}
+            onClick={(e) => {
+              e.preventDefault();
+              onSelect(item.id);
+            }}
             className={`w-full flex items-center gap-2 py-1 px-2.5 rounded-lg transition-all duration-200 text-left border border-transparent group mb-0.5 ${
               activeId === item.id ? activeClass : hoverClass
             }`}
@@ -99,14 +108,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <div className={`p-2.5 border-t ${isGreen ? 'border-white/10' : 'border-black/10'}`}>
         <div className={`rounded-lg p-2 flex items-center gap-2.5 ${accentColor} border border-white/5`}>
-           <div className="relative">
+            <div className="relative">
               <div className="w-1.5 h-1.5 rounded-full bg-school-green animate-ping absolute inset-0"></div>
               <div className="w-1.5 h-1.5 rounded-full bg-school-green relative"></div>
-           </div>
-           <div className="flex flex-col">
+            </div>
+            <div className="flex flex-col">
               <span className="text-[7px] font-black uppercase tracking-widest opacity-80 leading-none mb-0.5">Sistema Activo</span>
               <span className="text-[6px] opacity-40 font-bold leading-none uppercase tracking-widest">v3.4.2 stable</span>
-           </div>
+            </div>
         </div>
       </div>
     </div>

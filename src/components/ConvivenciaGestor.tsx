@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import * as XLSX from 'xlsx'; // Asegúrate de tener instalada esta librería (npm install xlsx)
+import * as XLSX from 'xlsx';
 
 const ConvivenciaGestor: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -29,23 +29,21 @@ const ConvivenciaGestor: React.FC = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-        // Mapear los datos del Excel a la estructura de la base de datos
         const formattedData = data.map(item => ({
           categoria: category,
           tipo: subCategory,
-          numeral: item.Numeral || item.numeral,
-          descripcion: item.Descripcion || item.descripcion
+          numeral: String(item.Numeral || item.numeral || ''),
+          descripcion: String(item.Descripcion || item.descripcion || '')
         }));
 
         const { error } = await supabase.from('catalogo_convivencia').insert(formattedData);
-
         if (error) throw error;
         alert(`✅ ${formattedData.length} registros de ${subCategory} cargados correctamente.`);
       } catch (err: any) {
         alert("Error al procesar el archivo: " + err.message);
       } finally {
         setLoading(false);
-        e.target.value = ''; // Limpiar input
+        e.target.value = '';
       }
     };
     reader.readAsBinaryString(file);
@@ -65,12 +63,11 @@ const ConvivenciaGestor: React.FC = () => {
         const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]) as any[];
 
         const formattedData = data.map(item => ({
-          tipo_falta_relacionada: item.Tipo || item.tipo, // Ej: 'Tipo I' o 'Leve'
-          descripcion: item.Descripcion || item.descripcion
+          tipo_falta_relacionada: String(item.Tipo || item.tipo || ''),
+          descripcion: String(item.Descripcion || item.descripcion || '')
         }));
 
         const { error } = await supabase.from('catalogo_acciones').insert(formattedData);
-
         if (error) throw error;
         alert(`✅ Catálogo de respuestas pedagógicas actualizado.`);
       } catch (err: any) {
@@ -84,19 +81,19 @@ const ConvivenciaGestor: React.FC = () => {
   };
 
   return (
-    <div className="space-y-12 animate-fadeIn pb-20">
+    /* AÑADIDA CLASE landscape-report PARA COMPATIBILIDAD DE IMPRESIÓN */
+    <div className="space-y-12 animate-fadeIn pb-20 landscape-report">
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
-        <div className="flex justify-between items-center mb-10">
-          <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight">Gestión Convivencia</h2>
-          {loading && <span className="text-[10px] font-black text-school-yellow animate-pulse uppercase bg-school-green-dark px-4 py-2 rounded-full">Procesando Base de Datos...</span>}
+        <div className="flex justify-between items-center mb-10 no-print">
+          <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight italic border-b-4 border-school-yellow pb-2">Configuración de Convivencia</h2>
+          {loading && <span className="text-[10px] font-black text-school-yellow animate-pulse uppercase bg-school-green-dark px-4 py-2 rounded-full">Actualizando Base de Datos...</span>}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 no-print">
           {sections.map((s, i) => (
-            <div key={i} className={`p-8 rounded-[2.5rem] ${s.color} text-white shadow-xl transition-transform hover:scale-[1.02]`}>
+            <div key={i} className={`p-8 rounded-[2.5rem] ${s.color} text-white shadow-xl transition-all hover:shadow-2xl`}>
               <h3 className="font-black text-[11px] uppercase tracking-widest mb-6 opacity-90">{s.title}</h3>
               <div className="space-y-3">
-                <button className={`w-full py-3 rounded-xl font-bold text-[9px] uppercase tracking-widest ${s.btn} shadow-inner opacity-80 hover:opacity-100`}>Descargar Plantilla</button>
                 <input 
                   type="file" 
                   className="hidden" 
@@ -104,20 +101,30 @@ const ConvivenciaGestor: React.FC = () => {
                   accept=".xls,.xlsx" 
                   onChange={(e) => handleFileUpload(e, s.category, s.sub)}
                 />
-                <label htmlFor={`f-${i}`} className="block w-full py-3 bg-white text-gray-800 rounded-xl font-black text-[9px] uppercase tracking-widest text-center cursor-pointer shadow-md hover:bg-gray-50">Subir {s.sub}</label>
+                <label htmlFor={`f-${i}`} className="block w-full py-4 bg-white text-gray-800 rounded-2xl font-black text-[10px] uppercase tracking-widest text-center cursor-pointer shadow-lg hover:scale-105 transition-transform">
+                  Cargar Excel {s.sub}
+                </label>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-12 pt-10 border-t border-gray-100">
+        <div className="mt-12 pt-10 border-t border-gray-100 no-print">
           <h3 className="text-lg font-black text-gray-800 mb-6 uppercase italic">Protocolos y Respuestas Pedagógicas</h3>
-          <div className="flex flex-col md:flex-row gap-4">
-              <button className="flex-grow bg-school-green text-white py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-school-green-dark transition-all">Descargar Estructura de Respuestas</button>
-              
+          <div className="flex flex-col md:flex-row gap-6">
               <input type="file" className="hidden" id="respuestas-upload" accept=".xls,.xlsx" onChange={handleResponsesUpload} />
-              <label htmlFor="respuestas-upload" className="flex-grow bg-school-yellow text-school-green-dark py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg text-center cursor-pointer hover:bg-white transition-all">Subir Catálogo de Acciones Correctivas</label>
+              <label htmlFor="respuestas-upload" className="flex-grow bg-school-yellow text-school-green-dark py-6 rounded-[2rem] font-black uppercase text-[10px] tracking-widest shadow-xl text-center cursor-pointer hover:bg-school-green-dark hover:text-white transition-all">
+                Actualizar Catálogo de Acciones Correctivas
+              </label>
           </div>
+        </div>
+
+        {/* NOTA PARA EL USUARIO EN PANTALLA */}
+        <div className="mt-8 p-6 bg-blue-50 rounded-3xl border border-blue-100 no-print">
+           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+             <i className="fas fa-info-circle mr-2"></i> 
+             Asegúrese de que el archivo Excel contenga las columnas "Numeral" y "Descripcion" exactamente.
+           </p>
         </div>
       </div>
     </div>

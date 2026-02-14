@@ -6,69 +6,66 @@ import TeacherDashboard from './components/TeacherDashboard';
 import { initializeDatabase } from './services/dbInitializer';
 import { supabase } from './lib/supabaseClient';
 
+// --- AJUSTE MAESTRO: Movido fuera de App para que Rollup no falle ---
+const GlobalPrintStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: `
+    @media print {
+      @page {
+        size: letter;
+        margin: 1cm 1cm 1.5cm 2.5cm !important;
+      }
+
+      /* Detecta automáticamente si el informe debe ser horizontal */
+      .landscape-report {
+        page: landscape;
+      }
+
+      @page landscape {
+        size: letter landscape;
+        margin: 1cm 1cm 1.5cm 2.5cm !important;
+      }
+
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      main, .App, #root {
+        width: 100% !important;
+        max-width: none !important;
+      }
+
+      header, footer, nav, button, .no-print, .bg-school-green-dark {
+        display: none !important;
+      }
+
+      table {
+        width: 100% !important;
+        table-layout: auto !important;
+        page-break-inside: auto;
+        border-collapse: collapse !important;
+      }
+      
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      main {
+        background: white !important;
+      }
+    }
+  `}} />
+);
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const SCHOOL_IMG = "https://lh3.googleusercontent.com/d/17-RGDdY8NMFkdLVuY1oWgmhNDCotAP-z";
-
-  // --- IMPLEMENTACIÓN DE PARÁMETROS DE IMPRESIÓN (PIAR VERTICAL / CONVIVENCIA HORIZONTAL) ---
-  const GlobalPrintStyles = () => (
-    <style dangerouslySetInnerHTML={{ __html: `
-      @media print {
-        /* 1. Configuración Base para Informes Verticales (PIAR) */
-        @page {
-          size: letter;
-          margin: 1cm 1cm 1.5cm 2.5cm !important; /* Margen izquierdo de seguridad */
-        }
-
-        /* 2. Configuración Especial para Informes Horizontales (Convivencia) */
-        /* Se activa automáticamente si el contenedor tiene la clase 'landscape-report' */
-        @page {
-          /* Selector avanzado para detectar si el contenido requiere horizontal */
-          size: letter landscape;
-          margin: 1cm 1cm 1.5cm 2.5cm !important;
-        }
-
-        body {
-          margin: 0 !important;
-          padding: 0 !important;
-          background: white !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-
-        /* 3. Ajustes de Estructura */
-        main, .App, #root {
-          width: 100% !important;
-          max-width: none !important;
-        }
-
-        /* Ocultar Interfaz en el PDF */
-        header, footer, nav, button, .no-print, .bg-school-green-dark {
-          display: none !important;
-        }
-
-        /* 4. Estabilidad de Tablas */
-        table {
-          width: 100% !important;
-          table-layout: auto !important;
-          page-break-inside: auto;
-          border-collapse: collapse !important;
-        }
-        
-        tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
-        }
-
-        /* Asegurar que el fondo sea blanco para ahorrar tinta y mejorar claridad */
-        main {
-          background: white !important;
-        }
-      }
-    `}} />
-  );
 
   useEffect(() => {
     initializeDatabase();
@@ -151,7 +148,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <GlobalPrintStyles />
-      <header className="bg-school-green-dark text-white px-8 py-4 shadow-xl border-b border-white/5 sticky top-0 z-50 flex justify-between items-center">
+      <header className="bg-school-green-dark text-white px-8 py-4 shadow-xl border-b border-white/5 sticky top-0 z-50 flex justify-between items-center no-print">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-4 group cursor-pointer">
             <img src={SCHOOL_IMG} alt="Escudo" className="h-12 w-12 object-contain bg-white rounded-2xl p-1.5 shadow-lg" />
@@ -187,7 +184,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="bg-white border-t border-slate-100 text-center p-8 text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] flex flex-col items-center gap-2">
+      <footer className="bg-white border-t border-slate-100 text-center p-8 text-[11px] text-slate-400 font-bold uppercase tracking-[0.3em] flex flex-col items-center gap-2 no-print">
         <img src={SCHOOL_IMG} className="h-6 w-6 grayscale opacity-30 mb-2" alt="IED Capellanía" />
         <p>IED Instituto Técnico Comercial de Capellanía © {new Date().getFullYear()}</p>
       </footer>

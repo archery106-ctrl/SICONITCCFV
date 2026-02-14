@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Course, Student } from '../types';
+import { User, Student } from '../types'; // Eliminado Course si no se usa aquí
 import Sidebar from './Sidebar';
 import AttendanceTable from './AttendanceTable';
 import TeacherAnnotationForm from './TeacherAnnotationForm';
@@ -20,7 +20,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // CARGA DE ESTUDIANTES DESDE SUPABASE
   useEffect(() => {
     const fetchStudents = async () => {
       if (selectedGrade) {
@@ -44,13 +43,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
         setLoading(false);
       }
     };
-
     fetchStudents();
   }, [selectedGrade]);
 
   const sidebarItems = [
     { id: 'overview', label: 'Inicio', icon: 'fa-home' },
     ...(user.grades || []).map(g => ({ id: `grade-${g}`, label: `Grado ${g}`, icon: 'fa-graduation-cap' })),
+    { id: 'course-director', label: 'Dirección de Curso', icon: 'fa-user-tie' }, // Asegurado ID para switch
     { id: 'about-us', label: 'About Us', icon: 'fa-info-circle' }
   ];
 
@@ -67,83 +66,75 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
     }
   };
 
-  // --- LÓGICA DE RENDERIZADO CON CLASES DE ORIENTACIÓN ---
   const renderGradeModule = () => {
     if (!selectedGrade) return null;
 
     switch (currentModule) {
       case 'attendance': return <AttendanceTable grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-      
-      // MÓDULO CONVIVENCIA: Forzamos clase horizontal para que el CSS de App.tsx lo reconozca
       case 'annotation': 
         return (
           <div className="landscape-report"> 
              <TeacherAnnotationForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />
           </div>
         );
-
-      // MÓDULO PIAR: Se mantiene vertical por defecto según la regla de App.tsx
       case 'piar': 
         return <PiarActionTeacherForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-        
       case 'report': 
         return <CompetencyReportForm grade={selectedGrade} onBack={() => setCurrentModule(null)} />;
-        
       default:
         return (
           <div className="space-y-10 animate-fadeIn no-print">
             <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-8 opacity-10">
-                 <i className="fas fa-graduation-cap text-9xl text-school-green"></i>
-               </div>
-               <h2 className="text-4xl font-black text-school-green-dark uppercase tracking-tight mb-2">Grado {selectedGrade}</h2>
-               <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.3em]">Gestión de Aula e Inclusión</p>
-               
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-                 {[
-                   { id: 'attendance', label: 'Asistencia', icon: 'fa-calendar-check', color: 'bg-blue-500' },
-                   { id: 'annotation', label: 'Observador', icon: 'fa-edit', color: 'bg-orange-500' },
-                   { id: 'piar', label: 'Ajustes PIAR', icon: 'fa-heart', color: 'bg-rose-500' },
-                   { id: 'report', label: 'Informe Final', icon: 'fa-file-alt', color: 'bg-purple-500' }
-                 ].map(m => (
-                   <button key={m.id} onClick={() => setCurrentModule(m.id)} className={`${m.color} p-8 rounded-[2.5rem] text-white shadow-xl hover:scale-105 transition-all group text-left relative overflow-hidden`}>
-                      <i className={`fas ${m.icon} absolute -right-2 -bottom-2 text-6xl opacity-20 group-hover:scale-110 transition-transform`}></i>
-                      <p className="font-black text-xs uppercase tracking-widest relative z-10">{m.label}</p>
-                   </button>
-                 ))}
-               </div>
+                <div className="absolute top-0 right-0 p-8 opacity-10">
+                  <i className="fas fa-graduation-cap text-9xl text-school-green"></i>
+                </div>
+                <h2 className="text-4xl font-black text-school-green-dark uppercase tracking-tight mb-2">Grado {selectedGrade}</h2>
+                <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.3em]">Gestión de Aula e Inclusión</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
+                  {[
+                    { id: 'attendance', label: 'Asistencia', icon: 'fa-calendar-check', color: 'bg-blue-500' },
+                    { id: 'annotation', label: 'Observador', icon: 'fa-edit', color: 'bg-orange-500' },
+                    { id: 'piar', label: 'Ajustes PIAR', icon: 'fa-heart', color: 'bg-rose-500' },
+                    { id: 'report', label: 'Informe Final', icon: 'fa-file-alt', color: 'bg-purple-500' }
+                  ].map(m => (
+                    <button key={m.id} onClick={() => setCurrentModule(m.id)} className={`${m.color} p-8 rounded-[2.5rem] text-white shadow-xl hover:scale-105 transition-all group text-left relative overflow-hidden`}>
+                       <i className={`fas ${m.icon} absolute -right-2 -bottom-2 text-6xl opacity-20 group-hover:scale-110 transition-transform`}></i>
+                       <p className="font-black text-xs uppercase tracking-widest relative z-10">{m.label}</p>
+                    </button>
+                  ))}
+                </div>
             </div>
 
             <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
-               <h3 className="text-xl font-black text-slate-800 mb-6 uppercase flex items-center gap-3">
-                 <i className="fas fa-users text-school-yellow"></i> Lista de Estudiantes {loading && <i className="fas fa-spinner animate-spin text-sm"></i>}
-               </h3>
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left">
-                   <thead>
-                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b">
-                       <th className="pb-4 pl-4">Documento</th>
-                       <th className="pb-4">Estudiante</th>
-                       <th className="pb-4">Estado</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y">
-                     {dbStudents.map(s => (
-                       <tr key={s.id} className="group hover:bg-gray-50 transition-colors">
-                         <td className="py-4 pl-4 font-bold text-gray-400 text-xs">{s.id}</td>
-                         <td className="py-4 font-black text-school-green-dark text-sm">{s.name}</td>
-                         <td className="py-4 text-xs font-bold">
-                           {s.isPiar ? 
-                             <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-[9px] uppercase tracking-tighter">Focalizado PIAR</span> : 
-                             <span className="bg-gray-100 text-gray-400 px-3 py-1 rounded-full text-[9px] uppercase tracking-tighter">Regular</span>
-                           }
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-                 {dbStudents.length === 0 && !loading && <p className="text-center py-10 italic text-gray-400">No hay estudiantes registrados en este grado.</p>}
-               </div>
+                <h3 className="text-xl font-black text-slate-800 mb-6 uppercase flex items-center gap-3">
+                  <i className="fas fa-users text-school-yellow"></i> Lista de Estudiantes {loading && <i className="fas fa-spinner animate-spin text-sm"></i>}
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b">
+                        <th className="pb-4 pl-4">Documento</th>
+                        <th className="pb-4">Estudiante</th>
+                        <th className="pb-4">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {dbStudents.map(s => (
+                        <tr key={s.id} className="group hover:bg-gray-50 transition-colors">
+                          <td className="py-4 pl-4 font-bold text-gray-400 text-xs">{s.id}</td>
+                          <td className="py-4 font-black text-school-green-dark text-sm">{s.name}</td>
+                          <td className="py-4 text-xs font-bold">
+                            {s.isPiar ? 
+                              <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-[9px] uppercase tracking-tighter">Focalizado PIAR</span> : 
+                              <span className="bg-gray-100 text-gray-400 px-3 py-1 rounded-full text-[9px] uppercase tracking-tighter">Regular</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {dbStudents.length === 0 && !loading && <p className="text-center py-10 italic text-gray-400">No hay estudiantes registrados en este grado.</p>}
+                </div>
             </div>
           </div>
         );
@@ -170,6 +161,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
           onToggle={() => setSidebarVisible(false)}
           color="school-green"
           showLogo={false}
+          className="no-print" // Sincronizado con el nuevo Sidebar.tsx
         />
       </div>
 
@@ -179,7 +171,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
         </button>
       )}
 
-      {/* El flex-grow ahora permite que el contenido de impresión use todo el espacio */}
       <div className="flex-grow overflow-y-auto p-4 md:p-8 custom-scrollbar print:p-0">
         {renderContent()}
       </div>
@@ -187,4 +178,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
   );
 };
 
-// ... (Resto de componentes TeacherWelcomeView y AboutUs se mantienen iguales)
+// --- COMPONENTES AUXILIARES PARA EVITAR ERRORES DE IDENTIFICADOR ---
+
+const TeacherWelcomeView: React.FC<{user: User}> = ({ user }) => (
+  <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+    <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter leading-none">Panel Docente</h2>
+    <p className="text-gray-400 font-bold uppercase tracking-[0.3em]">Bienvenido, {user.name}</p>
+    <div className="p-8 bg-white rounded-[3rem] shadow-premium border border-gray-50 max-w-md">
+      <p className="text-xs text-gray-500 font-bold uppercase leading-relaxed">
+        Seleccione un grado en el menú lateral para gestionar la asistencia, el observador o los ajustes PIAR de sus estudiantes.
+      </p>
+    </div>
+  </div>
+);
+
+const AboutUs: React.FC = () => (
+  <div className="h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-[3rem] shadow-premium m-8">
+    <h2 className="text-2xl font-black text-school-green-dark uppercase mb-4 italic">SICONITCC INSTITUCIONAL</h2>
+    <p className="text-gray-400 font-bold text-[10px] uppercase tracking-widest leading-relaxed">
+      Investigación y Desarrollo:<br/>Denys E. García & Patrick Y. Cañón
+    </p>
+  </div>
+);
+
+export default TeacherDashboard;
