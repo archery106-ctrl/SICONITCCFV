@@ -43,8 +43,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />;
-      case 'insert-admin': return <InsertAdminForm students={students} refreshData={loadAllData} />;
+      case 'insert-student': 
+        return (
+          <div className="space-y-12">
+            <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />
+            <div className="border-t-4 border-dashed border-gray-100 pt-12">
+              <StudentWithdrawalManager sedes={sedes} courses={courses} students={students} onUpdate={loadAllData} />
+            </div>
+          </div>
+        );
+      case 'insert-admin': return <InsertAdminForm refreshData={loadAllData} />;
       case 'course-management': return <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={areas} subjects={subjects} />;
       case 'convivencia': return <div className="landscape-report"><ConvivenciaGestor /></div>;
@@ -103,7 +111,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const InsertAdminForm: React.FC<{students: Student[], refreshData: () => void}> = ({students, refreshData}) => {
+const InsertAdminForm: React.FC<{refreshData: () => void}> = ({refreshData}) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,25 +119,23 @@ const InsertAdminForm: React.FC<{students: Student[], refreshData: () => void}> 
   const [cargo, setCargo] = useState('');
   const [admins, setAdmins] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchAdmins = async () => {
-      const { data } = await supabase.from('perfiles_usuarios').select('*').eq('rol', 'admin');
-      if (data) setAdmins(data);
-    };
-    fetchAdmins();
-  }, []);
+  const fetchAdmins = async () => {
+    const { data } = await supabase.from('perfiles_usuarios').select('*').eq('rol', 'admin');
+    if (data) setAdmins(data);
+  };
 
-  const deleteStudent = (id: string, sName: string) => {
-    if (window.confirm(`¿Eliminar a ${sName}?`)) {
-      const filtered = students.filter(s => s.id !== id);
-      localStorage.setItem('siconitcc_students', JSON.stringify(filtered));
-      refreshData();
-      alert("Eliminado.");
+  useEffect(() => { fetchAdmins(); }, []);
+
+  const deleteAdmin = async (id: string, admName: string) => {
+    if (window.confirm(`¿Eliminar al administrador ${admName}?`)) {
+      const { error } = await supabase.from('perfiles_usuarios').delete().eq('id', id);
+      if (error) alert("Error: " + error.message);
+      else { alert("✅ Administrador eliminado."); fetchAdmins(); }
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border">
         <h2 className="text-2xl font-black text-purple-700 mb-6 uppercase italic">Registrar Admin</h2>
         <form onSubmit={async (e) => {
@@ -137,7 +143,7 @@ const InsertAdminForm: React.FC<{students: Student[], refreshData: () => void}> 
           const { data } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, role: 'admin', cargo } } });
           if (data.user) {
             await supabase.from('perfiles_usuarios').insert([{ id: data.user.id, nombre_completo: name, email, rol: 'admin', cargo }]);
-            alert('✅ Creado'); setEmail(''); setPassword(''); setName(''); setCargo('');
+            alert('✅ Creado'); setEmail(''); setPassword(''); setName(''); setCargo(''); fetchAdmins();
           }
           setLoading(false);
         }} className="space-y-4">
@@ -148,17 +154,91 @@ const InsertAdminForm: React.FC<{students: Student[], refreshData: () => void}> 
           <button disabled={loading} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase text-xs">Crear Admin</button>
         </form>
       </div>
-      <div className="space-y-6">
-        <div className="bg-white p-8 rounded-[3rem] shadow-premium border border-red-50">
-          <h3 className="text-sm font-black text-red-600 uppercase mb-4 italic underline">Limpiar Estudiantes (Pruebas)</h3>
-          <div className="max-h-60 overflow-y-auto space-y-2">
-            {students.map(st => (
-              <div key={st.id} className="p-3 bg-red-50/30 rounded-xl border flex justify-between items-center group">
-                <span className="text-[10px] font-black uppercase text-gray-700">{st.name}</span>
-                <button onClick={() => deleteStudent(st.id, st.name)} className="p-2 text-red-400 hover:text-red-600"><i className="fas fa-trash-alt"></i></button>
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border">
+        <h3 className="text-sm font-black text-purple-700 uppercase mb-6 italic">Administradores Registrados</h3>
+        <div className="space-y-3">
+          {admins.map(adm => (
+            <div key={adm.id} className="p-4 bg-gray-50 rounded-2xl border flex justify-between items-center group">
+              <div>
+                <p className="text-[10px] font-black uppercase">{adm.nombre_completo}</p>
+                <p className="text-[8px] text-gray-400 font-bold uppercase">{adm.cargo}</p>
               </div>
-            ))}
-          </div>
+              <button onClick={() => deleteAdmin(adm.id, adm.nombre_completo)} className="text-red-400 hover:text-red-600 p-2"><i className="fas fa-trash-alt"></i></button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StudentWithdrawalManager: React.FC<{sedes: string[], courses: Course[], students: Student[], onUpdate: () => void}> = ({sedes, courses, students, onUpdate}) => {
+  const [selSede, setSelSede] = useState('');
+  const [selCourse, setSelCourse] = useState('');
+
+  const activeStudents = students.filter((s: any) => !s.retirado && (selSede ? s.sede === selSede : true) && (selCourse ? s.courseId === selCourse : true));
+  const withdrawnStudents = students.filter((s: any) => s.retirado);
+
+  const handleWithdraw = (id: string, name: string) => {
+    if (window.confirm(`¿Confirmar retiro del estudiante ${name}? Su información PIAR y de Convivencia se mantendrá en históricos.`)) {
+      const allStudents = JSON.parse(localStorage.getItem('siconitcc_students') || '[]');
+      const updated = allStudents.map((s: any) => s.id === id ? {...s, retirado: true, fecha_retiro: new Date().toLocaleDateString()} : s);
+      localStorage.setItem('siconitcc_students', JSON.stringify(updated));
+      onUpdate();
+      window.dispatchEvent(new Event('storage'));
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-fadeIn">
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-red-100">
+        <h2 className="text-2xl font-black text-red-600 mb-8 uppercase italic">Gestión de Retiro Estudiantil</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <select className="p-4 border rounded-2xl font-bold text-xs bg-gray-50" value={selSede} onChange={e => setSelSede(e.target.value)}>
+            <option value="">Seleccionar Sede...</option>
+            {sedes.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select className="p-4 border rounded-2xl font-bold text-xs bg-gray-50" value={selCourse} onChange={e => setSelCourse(e.target.value)}>
+            <option value="">Seleccionar Grado...</option>
+            {courses.filter(c => selSede ? c.sede === selSede : true).map(c => <option key={c.id} value={c.id}>{c.grade} - {c.sede}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {activeStudents.map(st => (
+            <div key={st.id} className="p-5 bg-gray-50 rounded-[2rem] border flex justify-between items-center group hover:bg-white transition-all">
+              <span className="text-[10px] font-black uppercase text-gray-700">{st.name}</span>
+              <button onClick={() => handleWithdraw(st.id, st.name)} className="bg-red-100 text-red-600 px-4 py-2 rounded-xl font-black text-[9px] uppercase hover:bg-red-600 hover:text-white transition-all">Retirar</button>
+            </div>
+          ))}
+          {activeStudents.length === 0 && <p className="text-gray-400 text-[10px] font-bold uppercase italic">No hay estudiantes activos con este filtro.</p>}
+        </div>
+      </div>
+
+      <div className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl">
+        <h2 className="text-2xl font-black text-white mb-8 uppercase italic tracking-widest">Estudiantes Retirados (Histórico)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-white">
+            <thead>
+              <tr className="border-b border-slate-700 text-[10px] font-black uppercase text-slate-400">
+                <th className="pb-4">Estudiante</th>
+                <th className="pb-4">Fecha Retiro</th>
+                <th className="pb-4 text-right">Acciones de Informe</th>
+              </tr>
+            </thead>
+            <tbody className="text-[10px] font-bold">
+              {withdrawnStudents.map(st => (
+                <tr key={st.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                  <td className="py-4 uppercase">{st.name}</td>
+                  <td className="py-4 text-slate-500">{(st as any).fecha_retiro}</td>
+                  <td className="py-4 text-right space-x-2">
+                    <button className="bg-school-green hover:bg-school-green-dark px-3 py-1.5 rounded-lg text-[8px] uppercase transition-colors">Informe PIAR</button>
+                    <button className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-[8px] uppercase transition-colors">Convivencia</button>
+                  </td>
+                </tr>
+              ))}
+              {withdrawnStudents.length === 0 && <tr><td colSpan={3} className="py-10 text-center text-slate-600 uppercase italic">No hay registros de estudiantes retirados.</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -171,17 +251,17 @@ const AboutUsView: React.FC = () => (
     <h1 className="text-4xl font-black text-school-green-dark mb-6 uppercase tracking-tighter">SICONITCC V3.1</h1>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mt-10">
       <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
-        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Investigadores</h3>
-        <p className="text-gray-800 font-bold text-lg">Denys E García</p>
-        <p className="text-gray-800 font-bold text-lg">Patrick Y. Cañón</p>
-        <p className="text-gray-400 text-sm font-black uppercase mt-4 italic">I.E.D. Capellanía</p>
+        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest text-center">Investigadores</h3>
+        <p className="text-gray-800 font-bold text-lg text-center">Denys E García</p>
+        <p className="text-gray-800 font-bold text-lg text-center">Patrick Y. Cañón</p>
+        <p className="text-gray-400 text-[10px] font-black uppercase mt-4 italic text-center">I.E.D. Capellanía</p>
       </div>
       <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
-        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Diseño Web</h3>
-        <p className="text-gray-800 font-bold text-lg">Patrick Y. Cañón</p>
-        <div className="mt-6 flex items-center gap-2">
+        <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest text-center">Diseño Web</h3>
+        <p className="text-gray-800 font-bold text-lg text-center">Patrick Y. Cañón</p>
+        <div className="mt-6 flex items-center justify-center gap-2">
           <span className="text-[10px] bg-school-yellow px-2 py-1 rounded-md font-black">AI COLLAB</span>
-          <p className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">Gemini 3 Flash</p>
+          <p className="text-gray-400 text-[10px] font-black uppercase tracking-tighter text-center">Gemini 3 Flash</p>
         </div>
       </div>
     </div>
