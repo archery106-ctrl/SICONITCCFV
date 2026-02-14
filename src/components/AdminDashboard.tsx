@@ -27,23 +27,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [sedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
 
+  const loadAllData = () => {
+    setStudents(JSON.parse(localStorage.getItem('siconitcc_students') || '[]'));
+    setTeachers(JSON.parse(localStorage.getItem('siconitcc_registered_teachers') || '[]'));
+    setCourses(JSON.parse(localStorage.getItem('siconitcc_courses') || '[]'));
+    setAreas(JSON.parse(localStorage.getItem('siconitcc_areas') || '[]'));
+    setSubjects(JSON.parse(localStorage.getItem('siconitcc_subjects') || '[]'));
+  };
+
   useEffect(() => {
-    const loadData = () => {
-      setStudents(JSON.parse(localStorage.getItem('siconitcc_students') || '[]'));
-      setTeachers(JSON.parse(localStorage.getItem('siconitcc_registered_teachers') || '[]'));
-      setCourses(JSON.parse(localStorage.getItem('siconitcc_courses') || '[]'));
-      setAreas(JSON.parse(localStorage.getItem('siconitcc_areas') || '[]'));
-      setSubjects(JSON.parse(localStorage.getItem('siconitcc_subjects') || '[]'));
-    };
-    loadData();
-    window.addEventListener('storage', loadData);
-    return () => window.removeEventListener('storage', loadData);
+    loadAllData();
+    window.addEventListener('storage', loadAllData);
+    return () => window.removeEventListener('storage', loadAllData);
   }, []);
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={() => {}} />;
-      case 'insert-admin': return <InsertAdminForm />;
+      case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={loadAllData} />;
+      case 'insert-admin': return <InsertAdminForm students={students} refreshData={loadAllData} />;
       case 'course-management': return <CourseForm courses={courses} setCourses={setCourses} areas={areas} setAreas={setAreas} subjects={subjects} setSubjects={setSubjects} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={areas} subjects={subjects} />;
       case 'convivencia': return <div className="landscape-report"><ConvivenciaGestor /></div>;
@@ -61,10 +62,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           <div className="h-full flex flex-col items-center justify-center text-center space-y-8 animate-fadeIn">
             <h2 className="text-5xl font-black text-school-green-dark uppercase tracking-tighter">Panel Administrativo</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 no-print">
-               <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg hover:scale-105 transition-all">Gestión Estudiantil</button>
-               <button onClick={() => setActiveTab('insert-admin')} className="p-6 bg-purple-600 text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg hover:scale-105 transition-all">Nuevo Admin</button>
-               <button onClick={() => setActiveTab('convivencia')} className="p-6 bg-school-green text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg hover:scale-105 transition-all">Convivencia</button>
-               <button onClick={() => setActiveTab('piar-enroll')} className="p-6 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-[10px] shadow-lg hover:scale-105 transition-all">Gestión PIAR</button>
+               <button onClick={() => setActiveTab('insert-student')} className="p-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg">Gestión Estudiantil</button>
+               <button onClick={() => setActiveTab('insert-admin')} className="p-6 bg-purple-600 text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg">Nuevo Admin</button>
+               <button onClick={() => setActiveTab('convivencia')} className="p-6 bg-school-green text-white rounded-[2rem] font-black uppercase text-[10px] shadow-lg">Convivencia</button>
+               <button onClick={() => setActiveTab('piar-enroll')} className="p-6 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-[10px] shadow-lg">Gestión PIAR</button>
             </div>
           </div>
         );
@@ -73,50 +74,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] relative">
-      {!leftVisible && (
-        <button onClick={() => setLeftVisible(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-50 bg-school-green-dark text-white p-3 rounded-r-2xl shadow-2xl no-print">
-          <i className="fas fa-chevron-right text-xl"></i>
-        </button>
-      )}
-
       <div className={`transition-all duration-300 no-print ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full`}>
-        <Sidebar 
-          title="Gestión" 
-          items={[
-            { id: 'overview', label: 'Inicio', icon: 'fa-home' },
-            { id: 'insert-student', label: 'Gestión Estudiantil', icon: 'fa-user-graduate' },
-            { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
-            { id: 'course-management', label: 'Cursos', icon: 'fa-school' },
-            { id: 'teacher-management', label: 'Docentes', icon: 'fa-chalkboard-teacher' },
-            { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
-            { id: 'annotations', label: 'Anotaciones', icon: 'fa-pen-square' },
-            { id: 'stats', label: 'Estadísticas', icon: 'fa-chart-line' },
-            { id: 'passwords', label: 'Contraseñas', icon: 'fa-key' },
-            { id: 'about-us', label: 'About Us', icon: 'fa-info-circle' }
-          ]} 
-          activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" showLogo={false} className="no-print"
-        />
+        <Sidebar title="Gestión" items={[
+          { id: 'overview', label: 'Inicio', icon: 'fa-home' },
+          { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
+          { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
+          { id: 'course-management', label: 'Cursos', icon: 'fa-school' },
+          { id: 'teacher-management', label: 'Docentes', icon: 'fa-chalkboard-teacher' },
+          { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
+          { id: 'annotations', label: 'Anotaciones', icon: 'fa-pen-square' },
+          { id: 'stats', label: 'Estadísticas', icon: 'fa-chart-line' },
+          { id: 'passwords', label: 'Contraseñas', icon: 'fa-key' },
+          { id: 'about-us', label: 'About Us', icon: 'fa-info-circle' }
+        ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" showLogo={false} />
       </div>
-
-      <div className="flex-grow overflow-y-auto p-8 print:p-0 h-full">{renderContent()}</div>
-
-      {!rightVisible && (
-        <button onClick={() => setRightVisible(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-50 bg-school-yellow text-school-green-dark p-3 rounded-l-2xl shadow-2xl no-print">
-          <i className="fas fa-chevron-left text-xl"></i>
-        </button>
-      )}
-
+      <div className="flex-grow overflow-y-auto p-8 h-full">{renderContent()}</div>
       <div className={`transition-all duration-300 no-print ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full`}>
-        <Sidebar 
-          title="PIAR" 
-          items={[
-            { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
-            { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
-            { id: 'piar-actas', label: 'Actas de Acuerdo', icon: 'fa-file-signature' },
-            { id: 'piar-review', label: 'Revisión', icon: 'fa-calendar-check' }
-          ]} 
-          activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" showLogo={false} className="no-print"
-        />
+        <Sidebar title="PIAR" items={[
+          { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
+          { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
+          { id: 'piar-actas', label: 'Actas de Acuerdo', icon: 'fa-file-signature' },
+          { id: 'piar-review', label: 'Revisión', icon: 'fa-calendar-check' }
+        ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" showLogo={false} />
       </div>
     </div>
   );
@@ -124,76 +103,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const InsertAdminForm: React.FC = () => {
+const InsertAdminForm: React.FC<{students: Student[], refreshData: () => void}> = ({students, refreshData}) => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [cargo, setCargo] = useState('');
-  const [adminList, setAdminList] = useState<any[]>([]);
-
-  const fetchAdmins = async () => {
-    const { data } = await supabase.from('perfiles_usuarios').select('*').eq('rol', 'admin');
-    if (data) setAdminList(data);
-  };
+  const [admins, setAdmins] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchAdmins = async () => {
+      const { data } = await supabase.from('perfiles_usuarios').select('*').eq('rol', 'admin');
+      if (data) setAdmins(data);
+    };
     fetchAdmins();
   }, []);
 
-  const handleCreateAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email, password, options: { data: { full_name: name, role: 'admin', cargo } }
-      });
-      if (authError) throw authError;
-      if (authData.user) {
-        await supabase.from('perfiles_usuarios').insert([{ id: authData.user.id, nombre_completo: name, email, rol: 'admin', cargo }]);
-        alert('✅ Administrador creado con éxito');
-        setEmail(''); setPassword(''); setName(''); setCargo('');
-        fetchAdmins();
-      }
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setLoading(false);
+  const deleteStudent = (id: string, sName: string) => {
+    if (window.confirm(`¿Eliminar a ${sName}?`)) {
+      const filtered = students.filter(s => s.id !== id);
+      localStorage.setItem('siconitcc_students', JSON.stringify(filtered));
+      refreshData();
+      alert("Eliminado.");
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
-      {/* Formulario */}
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 h-fit">
-        <h2 className="text-3xl font-black text-purple-700 mb-8 uppercase tracking-tight italic">Nuevo Administrador</h2>
-        <form onSubmit={handleCreateAdmin} className="space-y-6">
-          <input required placeholder="Nombre Completo" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={name} onChange={e => setName(e.target.value)} />
-          <input required placeholder="Cargo (Ej: Rector, Coordinador)" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={cargo} onChange={e => setCargo(e.target.value)} />
-          <input required type="email" placeholder="Correo Electrónico" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={email} onChange={e => setEmail(e.target.value)} />
-          <input required type="password" placeholder="Contraseña" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold" value={password} onChange={e => setPassword(e.target.value)} />
-          <button disabled={loading} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase shadow-xl hover:bg-purple-700 transition-all">
-            {loading ? 'Procesando...' : 'Crear Acceso Administrativo'}
-          </button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="bg-white p-10 rounded-[3rem] shadow-premium border">
+        <h2 className="text-2xl font-black text-purple-700 mb-6 uppercase italic">Registrar Admin</h2>
+        <form onSubmit={async (e) => {
+          e.preventDefault(); setLoading(true);
+          const { data } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, role: 'admin', cargo } } });
+          if (data.user) {
+            await supabase.from('perfiles_usuarios').insert([{ id: data.user.id, nombre_completo: name, email, rol: 'admin', cargo }]);
+            alert('✅ Creado'); setEmail(''); setPassword(''); setName(''); setCargo('');
+          }
+          setLoading(false);
+        }} className="space-y-4">
+          <input required placeholder="Nombre" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={name} onChange={e => setName(e.target.value)} />
+          <input required placeholder="Cargo" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={cargo} onChange={e => setCargo(e.target.value)} />
+          <input required type="email" placeholder="Email" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={email} onChange={e => setEmail(e.target.value)} />
+          <input required type="password" placeholder="Pass" className="w-full p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={password} onChange={e => setPassword(e.target.value)} />
+          <button disabled={loading} className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase text-xs">Crear Admin</button>
         </form>
       </div>
-
-      {/* Lista de Administradores */}
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
-        <h2 className="text-2xl font-black text-school-green-dark mb-8 uppercase tracking-tight">Monitoreo de Administradores</h2>
-        <div className="space-y-4">
-          {adminList.map(adm => (
-            <div key={adm.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white transition-all">
-              <div>
-                <p className="font-black text-gray-800 uppercase text-xs">{adm.nombre_completo}</p>
-                <p className="text-[10px] text-purple-600 font-bold uppercase">{adm.cargo || 'Admin'}</p>
+      <div className="space-y-6">
+        <div className="bg-white p-8 rounded-[3rem] shadow-premium border border-red-50">
+          <h3 className="text-sm font-black text-red-600 uppercase mb-4 italic underline">Limpiar Estudiantes (Pruebas)</h3>
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {students.map(st => (
+              <div key={st.id} className="p-3 bg-red-50/30 rounded-xl border flex justify-between items-center group">
+                <span className="text-[10px] font-black uppercase text-gray-700">{st.name}</span>
+                <button onClick={() => deleteStudent(st.id, st.name)} className="p-2 text-red-400 hover:text-red-600"><i className="fas fa-trash-alt"></i></button>
               </div>
-              <div className="text-right">
-                <p className="text-[9px] text-gray-400 font-bold">{adm.email}</p>
-              </div>
-            </div>
-          ))}
-          {adminList.length === 0 && <p className="text-center text-gray-300 font-bold py-10">No hay otros administradores registrados</p>}
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -202,11 +167,8 @@ const InsertAdminForm: React.FC = () => {
 
 const AboutUsView: React.FC = () => (
   <div className="bg-white p-12 rounded-[4rem] shadow-premium border border-gray-50 max-w-4xl mx-auto text-center animate-fadeIn">
-    <div className="mb-10 inline-block p-4 bg-school-green/10 rounded-full">
-      <i className="fas fa-microchip text-5xl text-school-green"></i>
-    </div>
+    <div className="mb-10 inline-block p-4 bg-school-green/10 rounded-full"><i className="fas fa-microchip text-5xl text-school-green"></i></div>
     <h1 className="text-4xl font-black text-school-green-dark mb-6 uppercase tracking-tighter">SICONITCC V3.1</h1>
-    
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mt-10">
       <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
         <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Investigadores</h3>
@@ -214,7 +176,6 @@ const AboutUsView: React.FC = () => (
         <p className="text-gray-800 font-bold text-lg">Patrick Y. Cañón</p>
         <p className="text-gray-400 text-sm font-black uppercase mt-4 italic">I.E.D. Capellanía</p>
       </div>
-      
       <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
         <h3 className="font-black text-school-green uppercase mb-4 text-xs tracking-widest">Diseño Web</h3>
         <p className="text-gray-800 font-bold text-lg">Patrick Y. Cañón</p>
@@ -224,14 +185,8 @@ const AboutUsView: React.FC = () => (
         </div>
       </div>
     </div>
-
-    <p className="mt-12 text-gray-400 font-bold text-sm">
-      "Innovación Tecnológica para la Excelencia Educativa en Capellanía"
-    </p>
-    
-    <div className="mt-6 text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">
-      &copy; 2026 Todos los derechos reservados
-    </div>
+    <p className="mt-12 text-gray-400 font-bold text-sm italic">"Innovación Tecnológica para la Excelencia Educativa en Capellanía"</p>
+    <div className="mt-6 text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">&copy; 2026 Todos los derechos reservados</div>
   </div>
 );
 
