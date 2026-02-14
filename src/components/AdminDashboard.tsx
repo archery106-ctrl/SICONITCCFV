@@ -71,8 +71,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc]">
-      <div className={`transition-all duration-300 no-print ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark`}>
+    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] relative">
+      
+      {/* BOTÓN PARA REABRIR PANEL IZQUIERDO (ADMIN) */}
+      {!leftVisible && (
+        <button 
+          onClick={() => setLeftVisible(true)} 
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-50 bg-school-green-dark text-white p-3 rounded-r-2xl shadow-2xl hover:bg-school-green transition-all no-print"
+          title="Mostrar Menú Admin"
+        >
+          <i className="fas fa-chevron-right text-xl"></i>
+        </button>
+      )}
+
+      {/* PANEL IZQUIERDO */}
+      <div className={`transition-all duration-300 no-print ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full`}>
         <Sidebar 
           title="Gestión" 
           items={[
@@ -90,62 +103,65 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" showLogo={false} className="no-print"
         />
       </div>
-      <div className="flex-grow overflow-y-auto p-8 print:p-0">{renderContent()}</div>
+
+      {/* CONTENIDO PRINCIPAL */}
+      <div className="flex-grow overflow-y-auto p-8 print:p-0 h-full">
+        {renderContent()}
+      </div>
+
+      {/* BOTÓN PARA REABRIR PANEL DERECHO (PIAR) */}
+      {!rightVisible && (
+        <button 
+          onClick={() => setRightVisible(true)} 
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-50 bg-school-yellow text-school-green-dark p-3 rounded-l-2xl shadow-2xl hover:bg-white transition-all no-print"
+          title="Mostrar Menú PIAR"
+        >
+          <i className="fas fa-chevron-left text-xl"></i>
+        </button>
+      )}
+
+      {/* PANEL DERECHO (PIAR) */}
+      <div className={`transition-all duration-300 no-print ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full`}>
+        <Sidebar 
+          title="PIAR" 
+          items={[
+            { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
+            { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
+            { id: 'piar-review', label: 'Revisión', icon: 'fa-calendar-check' }
+          ]} 
+          activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" showLogo={false} className="no-print"
+        />
+      </div>
     </div>
   );
 };
 
-// --- COMPONENTES AUXILIARES RECUPERADOS ---
-
+// ... (Se mantienen InsertAdminForm y AboutUsView que ya tenías)
 const InsertAdminForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('perfiles_usuarios').insert([{ 
-      nombre_completo: nombre, 
-      email: email, 
-      rol: 'administrator' 
-    }]);
-    if (!error) alert("✅ Administrador registrado en base de datos.");
+    const { error } = await supabase.from('perfiles_usuarios').insert([{ nombre_completo: nombre, email: email, rol: 'administrator' }]);
+    if (!error) alert("✅ Administrador registrado.");
     else alert("Error: " + error.message);
   };
-
   return (
-    <div className="bg-white p-10 rounded-[3rem] shadow-premium max-w-2xl mx-auto border-t-8 border-purple-600 animate-fadeIn">
-      <h3 className="text-2xl font-black text-purple-600 uppercase mb-8 italic">Registrar Nuevo Administrador</h3>
+    <div className="bg-white p-10 rounded-[3rem] shadow-premium max-w-2xl mx-auto border-t-8 border-purple-600">
+      <h3 className="text-2xl font-black text-purple-600 uppercase mb-8">Nuevo Admin</h3>
       <form onSubmit={handleCreate} className="space-y-6">
-        <input required placeholder="Nombre Completo" className="w-full p-4 border rounded-2xl font-bold" value={nombre} onChange={e => setNombre(e.target.value)} />
-        <input required type="email" placeholder="Correo Electrónico" className="w-full p-4 border rounded-2xl font-bold" value={email} onChange={e => setEmail(e.target.value)} />
-        <button type="submit" className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Crear Acceso Administrativo</button>
+        <input required placeholder="Nombre" className="w-full p-4 border rounded-2xl" value={nombre} onChange={e => setNombre(e.target.value)} />
+        <input required type="email" placeholder="Email" className="w-full p-4 border rounded-2xl" value={email} onChange={e => setEmail(e.target.value)} />
+        <button type="submit" className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase">Crear Acceso</button>
       </form>
     </div>
   );
 };
 
 const AboutUsView: React.FC = () => (
-  <div className="bg-white p-12 rounded-[4rem] shadow-premium max-w-3xl mx-auto text-center animate-fadeIn border-2 border-school-yellow/20">
-    <div className="mb-8 flex justify-center">
-       <div className="h-20 w-20 bg-school-green-dark rounded-[2rem] flex items-center justify-center text-school-yellow text-4xl shadow-xl">
-          <i className="fas fa-microchip"></i>
-       </div>
-    </div>
-    <h2 className="text-3xl font-black text-school-green-dark uppercase italic tracking-tighter mb-2">SICONITCC INSTITUCIONAL</h2>
-    <p className="text-xs text-gray-400 font-bold uppercase tracking-[0.4em] mb-10">Software de Gestión Escolar v3.4.2</p>
-    <div className="space-y-8">
-       <div className="p-6 bg-gray-50 rounded-3xl">
-          <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Investigación y Desarrollo Pedagógico</p>
-          <p className="text-lg font-black text-school-green-dark uppercase">Denys Esperanza García</p>
-       </div>
-       <div className="p-6 bg-gray-50 rounded-3xl">
-          <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Ingeniería y Arquitectura de Software</p>
-          <p className="text-lg font-black text-school-green-dark uppercase tracking-widest underline decoration-school-yellow decoration-4">Patrick Y. Cañón</p>
-       </div>
-    </div>
-    <div className="mt-12 text-[8px] font-bold text-gray-300 uppercase tracking-widest">
-       © 2026 IED Instituto Técnico Comercial de Capellanía
-    </div>
+  <div className="bg-white p-12 rounded-[4rem] shadow-premium max-w-3xl mx-auto text-center border-2 border-school-yellow/20">
+    <h2 className="text-3xl font-black text-school-green-dark uppercase italic mb-2">SICONITCC INSTITUCIONAL</h2>
+    <p className="text-lg font-black text-school-green-dark uppercase">Patrick Y. Cañón & Denys E. García</p>
   </div>
 );
 
