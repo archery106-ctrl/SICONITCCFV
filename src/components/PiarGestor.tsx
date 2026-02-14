@@ -70,27 +70,37 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
   };
 
   const handleFormalizarActa = async () => {
-    if (!actaData.equipo_directivo) return alert("Por favor ingrese el equipo directivo.");
+    if (!actaData.equipo_directivo) {
+      alert("Por favor ingrese el equipo directivo.");
+      return;
+    }
     
-    const student = students.find((s: Student) => s.id === actaData.estudiante_id) as any;
+    const studentId = actaData.estudiante_id;
+    const student = students.find((s: any) => s.id === studentId);
     
-    const payload = {
-      estudiante_id: actaData.estudiante_id,
-      fecha: actaData.fecha,
-      nombre_estudiante: student?.name || '',
-      identificacion: student?.documentNumber || '',
-      edad: student?.age || '', // Rollup ahora lo encontrará como 'any' sin romperse
-      equipo_directivo: actaData.equipo_directivo,
-      nombre_madre: actaData.nombre_madre,
-      nombre_padre: actaData.nombre_padre,
-      institucion: 'I.E.D. Instituto Técnico Comercial de Capellanía',
-      parentesco_madre: 'Madre',
-      parentesco_padre: 'Padre'
-    };
+    if (!student) {
+      alert("Estudiante no encontrado.");
+      return;
+    }
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('actas_acuerdo_piar').upsert([payload]);
+      const { error } = await supabase
+        .from('actas_acuerdo_piar')
+        .upsert([{
+          estudiante_id: studentId,
+          fecha: actaData.fecha,
+          nombre_estudiante: student.name || '',
+          identificacion: student.documentNumber || '',
+          edad: student.age || '',
+          equipo_directivo: actaData.equipo_directivo,
+          nombre_madre: actaData.nombre_madre,
+          nombre_padre: actaData.nombre_padre,
+          institucion: 'I.E.D. Instituto Técnico Comercial de Capellanía',
+          parentesco_madre: 'Madre',
+          parentesco_padre: 'Padre'
+        }]);
+
       if (error) throw error;
       alert("✅ Anexo 3 Formalizado");
       setIsActaModalOpen(false);
@@ -177,14 +187,58 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes }) => {
         </div>
 
         {isActaModalOpen && (
-          <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4">
-              <div className="bg-white w-full max-w-2xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow animate-scaleIn">
-                  <h3 className="text-2xl font-black uppercase text-school-green italic text-center">Diligenciar Anexo 3</h3>
-                  <div className="bg-gray-50 p-4 rounded-2xl border text-center font-black text-xs text-gray-500 uppercase">Estudiante: {students.find(s => s.id === actaData.estudiante_id)?.name}</div>
-                  <input placeholder="Nombres del Equipo Directivo" className="w-full p-5 border-2 border-gray-100 rounded-2xl font-bold outline-none" value={actaData.equipo_directivo} onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} />
-                  <div className="flex gap-4">
+          <div className="fixed inset-0 bg-black/90 z-[110] flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white w-full max-w-3xl rounded-[3.5rem] p-12 space-y-8 shadow-2xl border-t-8 border-school-yellow animate-scaleIn my-8">
+                  <div className="text-center space-y-2">
+                    <h3 className="text-2xl font-black uppercase text-school-green italic">Diligenciar Anexo 3</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Institución Educativa y Sede: I.E.D INSTITUTO Técnico Comercial de capellanía</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-3xl border border-gray-100">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase ml-2">Fecha</span>
+                      <input type="date" className="p-4 border rounded-2xl bg-white font-bold text-xs" value={actaData.fecha} onChange={e => setActaData({...actaData, fecha: e.target.value})} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase ml-2">Nombre del Estudiante</span>
+                      <input readOnly className="p-4 border rounded-2xl bg-gray-100 font-black text-xs uppercase opacity-70" value={students.find(s => s.id === actaData.estudiante_id)?.name} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase ml-2">Documento de Identificación</span>
+                      <input readOnly className="p-4 border rounded-2xl bg-gray-100 font-black text-xs opacity-70" value={(students.find(s => s.id === actaData.estudiante_id) as StudentDB)?.documentNumber || ''} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-gray-400 uppercase ml-2">Edad</span>
+                      <input readOnly className="p-4 border rounded-2xl bg-gray-100 font-black text-xs opacity-70" value={(students.find(s => s.id === actaData.estudiante_id) as StudentDB)?.age || ''} />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-school-green uppercase ml-2 tracking-widest">Nombres equipo directivos y de docentes</label>
+                    <textarea 
+                      placeholder="Escriba aquí los nombres de los directivos y docentes..." 
+                      className="w-full p-5 border-2 border-gray-100 rounded-[2rem] font-bold outline-none text-xs min-h-[100px]" 
+                      value={actaData.equipo_directivo} 
+                      onChange={e => setActaData({...actaData, equipo_directivo: e.target.value})} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-school-green uppercase ml-2">Nombres familia del estudiante (1)</label>
+                      <input className="w-full p-4 border rounded-2xl font-bold text-xs" value={actaData.nombre_madre} onChange={e => setActaData({...actaData, nombre_madre: e.target.value})} placeholder="Nombre completo" />
+                      <input readOnly className="w-full p-2 bg-blue-50 border-none rounded-xl text-[9px] font-black text-blue-600 uppercase" value="Parentesco: Madre / Acudiente" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-school-green uppercase ml-2">Nombres familia del estudiante (2)</label>
+                      <input className="w-full p-4 border rounded-2xl font-bold text-xs" value={actaData.nombre_padre} onChange={e => setActaData({...actaData, nombre_padre: e.target.value})} placeholder="Nombre completo" />
+                      <input readOnly className="w-full p-2 bg-blue-50 border-none rounded-xl text-[9px] font-black text-blue-600 uppercase" value="Parentesco: Padre / Acudiente" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
                       <button onClick={() => setIsActaModalOpen(false)} className="flex-1 py-5 bg-gray-100 rounded-2xl font-black uppercase text-xs text-gray-400">Cancelar</button>
-                      <button onClick={handleFormalizarActa} className="flex-1 py-5 bg-school-green text-white rounded-2xl font-black uppercase text-xs shadow-xl">Formalizar Acta</button>
+                      <button onClick={handleFormalizarActa} className="flex-1 py-5 bg-school-green text-white rounded-2xl font-black uppercase text-xs shadow-xl hover:scale-105 transition-transform">Formalizar Acta</button>
                   </div>
               </div>
           </div>
