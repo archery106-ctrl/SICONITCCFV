@@ -19,10 +19,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
-  const [assignedGrades, setAssignedGrades] = useState<string[]>(user.grades || []);
+  const [assignedGrades, setAssignedGrades] = useState<string[]>(user?.grades || []);
 
   // 1. CARGAR GRADOS ASIGNADOS REALES DESDE SUPABASE
   useEffect(() => {
+    if (!user?.id) return; // Evita errores si el usuario no ha cargado
+
     const fetchTeacherProfile = async () => {
       const { data, error } = await supabase
         .from('perfiles_usuarios')
@@ -35,7 +37,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
       }
     };
     fetchTeacherProfile();
-  }, [user.id]);
+  }, [user?.id]);
 
   // 2. CARGAR ESTUDIANTES ACTIVOS DEL GRADO SELECCIONADO
   useEffect(() => {
@@ -64,6 +66,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
     };
     fetchStudents();
   }, [selectedGrade]);
+
+  // SEGURIDAD: Si el usuario no existe aún, mostrar carga
+  if (!user) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#f0f4f8]">
+        <div className="text-center">
+          <i className="fas fa-circle-notch animate-spin text-4xl text-school-green mb-4"></i>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Verificando Credenciales...</p>
+        </div>
+      </div>
+    );
+  }
 
   const sidebarItems = [
     { id: 'overview', label: 'Inicio', icon: 'fa-home' },
