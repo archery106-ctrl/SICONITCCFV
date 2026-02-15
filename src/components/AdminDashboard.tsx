@@ -10,8 +10,9 @@ import AnnotationAdmin from './AnnotationAdmin';
 import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
+import { sendSiconitccEmail } from '../lib/messenger'; // Importamos el asistente
 
-// --- FORMULARIO DE ADMIN CORREGIDO ---
+// --- FORMULARIO DE ADMIN CORREGIDO CON MENSAJERÍA ---
 const InsertAdminForm: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [formData, setFormData] = useState({ name: '', charge: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -20,17 +21,40 @@ const InsertAdminForm: React.FC<{ onComplete: () => void }> = ({ onComplete }) =
     e.preventDefault();
     setLoading(true);
     try {
+      // 1. Registro en Base de Datos
       const { error } = await supabase.from('perfiles_usuarios').insert([
         { nombre: formData.name, cargo: formData.charge, email: formData.email, rol: 'admin' }
       ]);
       if (error) throw error;
-      alert("✅ Administrador registrado exitosamente.");
+
+      // 2. Envío de Correo de Bienvenida
+      const emailHtml = `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #059669; border-radius: 20px; max-width: 500px;">
+          <h2 style="color: #059669; text-transform: uppercase italic;">¡Bienvenido a SICONITCC!</h2>
+          <p>Hola <strong>${formData.name}</strong>, se ha creado tu cuenta administrativa exitosamente.</p>
+          <div style="background: #f0fdf4; padding: 15px; border-radius: 15px; margin: 20px 0; border: 1px solid #bbf7d0;">
+            <p style="margin: 5px 0;"><strong>Usuario:</strong> ${formData.email}</p>
+            <p style="margin: 5px 0;"><strong>Contraseña:</strong> ${formData.password}</p>
+          </div>
+          <p style="font-style: italic; color: #6b7280; font-size: 12px;">"Educación con tecnología para una alta calidad humana"</p>
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="font-size: 10px; color: #9ca3af; text-align: center;">I.E.D. Instituto Técnico Capellanía - Fúquene Cundinamarca</p>
+        </div>
+      `;
+
+      await sendSiconitccEmail(
+        formData.email, 
+        "Bienvenido a SICONITCC - Tus Credenciales de Acceso", 
+        emailHtml
+      );
+
+      alert("✅ Administrador registrado y correo de bienvenida enviado.");
       setFormData({ name: '', charge: '', email: '', password: '' });
-      onComplete(); // Llama a la función de refresco de forma segura
+      onComplete(); 
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
-      setLoading(false); // ESTO EVITA QUE QUEDE GRIS
+      setLoading(false); 
     }
   };
 
@@ -59,7 +83,6 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
 
-  // DEFINICIÓN DE LOADDATA COMO CALLBACK PARA QUE SEA ACCESIBLE
   const loadData = useCallback(async () => {
     const { data: st } = await supabase.from('estudiantes').select('*').eq('retirado', false);
     setStudents(st || []);
