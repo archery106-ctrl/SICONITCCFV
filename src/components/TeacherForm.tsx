@@ -34,25 +34,34 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
   const handleRegisterTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    const cleanEmail = reg.email.trim().toLowerCase();
+    const cleanName = reg.name.trim();
+
     try {
-      // 1. Registro directo en perfiles_usuarios (El ID se genera solo en SQL)
+      // 1. Registro en la tabla perfiles_usuarios
       const { error: profileError } = await supabase
         .from('perfiles_usuarios')
         .insert([{
-          nombre: reg.name,
-          email: reg.email,
+          nombre_completo: cleanName,
+          email: cleanEmail,
           rol: 'docente'
         }]);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        if (profileError.message.includes("duplicate key")) {
+          throw new Error("⚠️ El correo ya está registrado. Elimine el registro previo en Supabase.");
+        }
+        throw profileError;
+      }
 
-      // 2. Envío de Correo Institucional
+      // 2. Diseño del Correo Institucional
       const emailHtml = `
         <div style="font-family: sans-serif; padding: 25px; border: 2px solid #059669; border-radius: 30px; max-width: 500px; background-color: #ffffff;">
           <h2 style="color: #059669; text-transform: uppercase; font-style: italic;">SICONITCC - Acceso Docente</h2>
-          <p>Estimado(a) <strong>${reg.name}</strong>, se le ha asignado acceso al sistema institucional.</p>
+          <p>Estimado(a) <strong>${cleanName}</strong>, se le ha asignado acceso al sistema institucional.</p>
           <div style="background: #f0fdf4; padding: 20px; border-radius: 20px; margin: 20px 0; border: 1px solid #bbf7d0;">
-            <p style="margin: 5px 0;"><strong>Usuario:</strong> ${reg.email}</p>
+            <p style="margin: 5px 0;"><strong>Usuario:</strong> ${cleanEmail}</p>
             <p style="margin: 5px 0;"><strong>Contraseña Inicial:</strong> ${reg.password}</p>
           </div>
           <p style="font-size: 13px; color: #374151;">Ingrese al portal con estas credenciales para gestionar su carga académica.</p>
@@ -61,8 +70,9 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
         </div>
       `;
 
+      // 3. Envío de correo mediante la Edge Function configurada
       await sendSiconitccEmail(
-        reg.email, 
+        cleanEmail, 
         "Bienvenido(a) a SICONITCC - Credenciales de Docente", 
         emailHtml
       );
@@ -72,7 +82,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
       window.dispatchEvent(new Event('storage'));
       
     } catch (err: any) {
-      alert("Error: " + err.message);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -135,7 +145,6 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
 
   return (
     <div className="space-y-10 animate-fadeIn pb-24">
-      
       {/* 1. REGISTRO */}
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
         <h2 className="text-3xl font-black text-school-green-dark mb-10 uppercase tracking-tight italic">1. Registro de Personal Docente</h2>
