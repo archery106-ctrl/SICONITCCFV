@@ -16,7 +16,6 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [leftVisible, setLeftVisible] = useState(true);
   const [rightVisible, setRightVisible] = useState(true);
 
-  // Estados de datos
   const [students, setStudents] = useState<Student[]>([]);
   const [sedes, setSedes] = useState<string[]>(['Sede Principal', 'Sede Primaria', 'Sede Rural Capellanía']);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -36,21 +35,50 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
-      case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
-      case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={()=>{}} />;
+      case 'course-management': 
+        return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
+      case 'convivencia': 
+        return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
+      case 'insert-student': 
+        return <StudentForm courses={courses} sedes={sedes} onAdd={()=>{}} />;
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas':
         return <PiarGestor activeSubTab={activeTab} students={students} sedes={sedes} />;
+      
+      // PANTALLA DE INICIO CON TODOS LOS BOTONES
       default:
         return (
-          <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fadeIn">
-            <div className="bg-white p-16 rounded-[4rem] shadow-premium border-2 border-gray-50 max-w-5xl w-full text-center">
-               <h2 className="text-5xl font-black text-school-green-dark uppercase italic mb-10">SICONITCC 2026</h2>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button onClick={() => setActiveTab('convivencia')} className="p-8 bg-school-green text-white rounded-[2rem] font-black uppercase text-xs shadow-lg hover:scale-105 transition-all">Gestión Convivencia</button>
-                  <button onClick={() => setActiveTab('piar-enroll')} className="p-8 bg-school-yellow text-school-green-dark rounded-[2rem] font-black uppercase text-xs shadow-lg hover:scale-105 transition-all">Módulo PIAR</button>
+          <div className="flex flex-col items-center justify-center min-h-full space-y-10 animate-fadeIn p-4">
+            <div className="bg-white p-12 rounded-[4rem] shadow-premium border-2 border-gray-50 max-w-6xl w-full text-center">
+               <h2 className="text-5xl font-black text-school-green-dark uppercase italic mb-10 tracking-tighter">Panel de Control ITCC</h2>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* GESTIÓN ACADÉMICA (RESTURADO) */}
+                  <button onClick={() => setActiveTab('course-management')} className="group p-8 bg-emerald-600 text-white rounded-[2.5rem] shadow-xl hover:scale-105 transition-all flex flex-col items-center gap-3">
+                    <i className="fas fa-school text-3xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="font-black uppercase text-[10px]">Gestión de Sedes y Grados</span>
+                  </button>
+
+                  <button onClick={() => setActiveTab('insert-student')} className="group p-8 bg-blue-600 text-white rounded-[2.5rem] shadow-xl hover:scale-105 transition-all flex flex-col items-center gap-3">
+                    <i className="fas fa-user-graduate text-3xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="font-black uppercase text-[10px]">Control de Estudiantes</span>
+                  </button>
+
+                  <button onClick={() => setActiveTab('convivencia')} className="group p-8 bg-school-green text-white rounded-[2.5rem] shadow-xl hover:scale-105 transition-all flex flex-col items-center gap-3">
+                    <i className="fas fa-balance-scale text-3xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="font-black uppercase text-[10px]">Módulo Convivencia (Excel)</span>
+                  </button>
+
+                  <button onClick={() => setActiveTab('piar-enroll')} className="group p-8 bg-school-yellow text-school-green-dark rounded-[2.5rem] shadow-xl hover:scale-105 transition-all flex flex-col items-center gap-3">
+                    <i className="fas fa-heart text-3xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="font-black uppercase text-[10px]">Gestión PIAR (Anexos)</span>
+                  </button>
+
+                  <button onClick={() => setActiveTab('insert-admin')} className="group p-8 bg-red-600 text-white rounded-[2.5rem] shadow-xl hover:scale-105 transition-all flex flex-col items-center gap-3">
+                    <i className="fas fa-user-shield text-3xl group-hover:rotate-12 transition-transform"></i>
+                    <span className="font-black uppercase text-[10px]">Nuevo Administrador</span>
+                  </button>
                </div>
             </div>
           </div>
@@ -59,40 +87,56 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#f8fafc] relative">
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
       {/* SIDEBAR IZQUIERDO: GESTIÓN */}
-      <div className={`transition-all duration-300 ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-green-dark h-full shadow-2xl z-30`}>
-        <Sidebar title="Gestión" items={[
-          { id: 'overview', label: 'Inicio', icon: 'fa-home' },
-          { id: 'course-management', label: 'Gestión Académica', icon: 'fa-school' },
-          { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
-          { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
-          { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' }
-        ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setLeftVisible(false)} color="school-green" />
+      <div className={`transition-all duration-300 ${leftVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} h-full z-30`}>
+        <Sidebar 
+          title="Gestión" 
+          items={[
+            { id: 'overview', label: 'Inicio', icon: 'fa-home' },
+            { id: 'course-management', label: 'Sedes y Grados', icon: 'fa-school' },
+            { id: 'convivencia', label: 'Convivencia', icon: 'fa-balance-scale' },
+            { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
+            { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' }
+          ]} 
+          activeId={activeTab} 
+          onSelect={setActiveTab} 
+          onToggle={() => setLeftVisible(false)} 
+          color="school-green" 
+          showLogo={true}
+        />
       </div>
 
       {/* CONTENIDO CENTRAL */}
-      <div className="flex-grow overflow-y-auto p-8 h-full relative z-10 custom-scrollbar">
+      <div className="flex-grow overflow-y-auto p-8 h-full relative z-10 custom-scrollbar bg-white/50">
         {!leftVisible && (
-          <button onClick={() => setLeftVisible(true)} className="absolute left-0 top-1/2 bg-school-green text-white p-2 rounded-r-xl shadow-lg z-50">
-            <i className="fas fa-chevron-right text-xs"></i>
+          <button onClick={() => setLeftVisible(true)} className="absolute left-2 top-5 bg-school-green text-white p-2 rounded-xl shadow-lg z-50 hover:scale-110 transition-all">
+            <i className="fas fa-bars"></i>
           </button>
         )}
         {renderContent()}
         {!rightVisible && (
-          <button onClick={() => setRightVisible(true)} className="absolute right-0 top-1/2 bg-school-yellow text-school-green-dark p-2 rounded-l-xl shadow-lg z-50">
-            <i className="fas fa-chevron-left text-xs"></i>
+          <button onClick={() => setRightVisible(true)} className="absolute right-2 top-5 bg-school-yellow text-school-green-dark p-2 rounded-xl shadow-lg z-50 hover:scale-110 transition-all">
+            <i className="fas fa-heart"></i>
           </button>
         )}
       </div>
 
-      {/* SIDEBAR DERECHO: PIAR */}
-      <div className={`transition-all duration-300 ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} bg-school-yellow h-full shadow-2xl z-30`}>
-        <Sidebar title="PIAR" items={[
-            { id: 'piar-enroll', label: 'Inscribir', icon: 'fa-heart' },
-            { id: 'piar-follow', label: 'Seguimiento', icon: 'fa-clipboard-check' },
-            { id: 'piar-actas', label: 'Actas de Acuerdo', icon: 'fa-file-signature' }
-          ]} activeId={activeTab} onSelect={setActiveTab} onToggle={() => setRightVisible(false)} color="school-yellow" textColor="text-school-green-dark" />
+      {/* SIDEBAR DERECHO: PIAR (ANEXO 3 RESTAURADO) */}
+      <div className={`transition-all duration-300 ${rightVisible ? 'w-64' : 'w-0 opacity-0 overflow-hidden'} h-full z-30`}>
+        <Sidebar 
+          title="Módulo PIAR" 
+          items={[
+            { id: 'piar-enroll', label: 'Anexo 1: Inscribir', icon: 'fa-id-card' },
+            { id: 'piar-follow', label: 'Anexo 2: Seguimiento', icon: 'fa-clipboard-check' },
+            { id: 'piar-actas', label: 'Anexo 3: Actas', icon: 'fa-file-signature' } // RESTAURADO
+          ]} 
+          activeId={activeTab} 
+          onSelect={setActiveTab} 
+          onToggle={() => setRightVisible(false)} 
+          color="school-yellow" 
+          showLogo={false}
+        />
       </div>
     </div>
   );
