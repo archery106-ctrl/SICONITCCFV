@@ -21,14 +21,20 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
 
   // CARGAR SEDES DESDE SUPABASE
   const fetchSedes = async () => {
-    const { data } = await supabase.from('sedes').select('nombre');
-    if (data) setSedes(data.map(s => s.nombre));
+    try {
+      const { data, error } = await supabase.from('sedes').select('nombre');
+      if (error) throw error;
+      if (data) setSedes(data.map(s => s.nombre));
+    } catch (err: any) {
+      console.error("Error cargando sedes:", err.message);
+    }
   };
 
   useEffect(() => {
     fetchSedes();
   }, []);
 
+  // FUNCIÓN DE ELIMINACIÓN
   const deleteItem = async (id: string, type: 'course' | 'area' | 'subject' | 'sede') => {
     if (!confirm(`¿Seguro que desea eliminar este ${type}?`)) return;
     setLoading(true);
@@ -46,13 +52,46 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
       const { error } = await supabase.from(table).delete().eq(column, id);
       if (error) throw error;
 
-      // Recargar datos tras eliminar
-      window.dispatchEvent(new Event('storage')); // Para que AdminDashboard recargue
+      window.dispatchEvent(new Event('storage')); 
       if (type === 'sede') fetchSedes();
       
       alert(`✅ ${type} eliminado correctamente.`);
     } catch (err: any) {
-      alert("❌ Error: " + err.message);
+      alert("❌ Error al eliminar: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- MANEJADORES DE CREACIÓN ---
+
+  const handleCreateSede = async () => {
+    if(!newSede) return alert("Escriba el nombre de la sede");
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('sedes').insert([{ nombre: newSede }]);
+      if (error) throw error;
+      setNewSede('');
+      fetchSedes();
+      alert("✅ Sede creada exitosamente.");
+    } catch (err: any) {
+      alert("❌ Error al crear sede: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateGrade = async () => {
+    if(!newGrade.sede || !newGrade.grade) return alert("Complete Sede y Grado");
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('cursos').insert([{ grade: newGrade.grade, sede: newGrade.sede }]);
+      if (error) throw error;
+      setNewGrade({ sede: '', grade: '' });
+      window.dispatchEvent(new Event('storage'));
+      alert("✅ Grado vinculado correctamente.");
+    } catch (err: any) {
+      alert("❌ Error al vincular grado: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -70,15 +109,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
           </h3>
           <div className="flex gap-4 mb-6">
             <input className="flex-grow p-4 border rounded-2xl bg-gray-50 font-bold outline-none focus:border-school-green text-xs" placeholder="Nombre de la Sede" value={newSede} onChange={e => setNewSede(e.target.value)} />
-            <button 
-              disabled={loading}
-              onClick={async () => { 
-                if(!newSede) return;
-                const { error } = await supabase.from('sedes').insert([{ nombre: newSede }]);
-                if(!error) { setNewSede(''); fetchSedes(); }
-              }} 
-              className="bg-school-green text-white px-8 rounded-2xl font-black uppercase shadow-lg text-xs"
-            >Crear Sede</button>
+            <button disabled={loading} onClick={handleCreateSede} className="bg-school-green text-white px-8 rounded-2xl font-black uppercase shadow-lg text-xs">{loading ? '...' : 'Crear Sede'}</button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {sedes.map((s, i) => (
@@ -101,18 +132,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
               {sedes.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
             <input className="p-4 border rounded-2xl bg-gray-50 font-bold outline-none text-xs" placeholder="Nombre Grado (Ej: 601)" value={newGrade.grade} onChange={e => setNewGrade({...newGrade, grade: e.target.value})} />
-            <button 
-              disabled={loading}
-              onClick={async () => {
-                if(!newGrade.sede || !newGrade.grade) return;
-                const { error } = await supabase.from('cursos').insert([{ grade: newGrade.grade, sede: newGrade.sede }]);
-                if (!error) {
-                  setNewGrade({ sede: '', grade: '' });
-                  window.dispatchEvent(new Event('storage'));
-                }
-              }} 
-              className="bg-school-green text-white rounded-2xl font-black uppercase shadow-lg text-xs"
-            >Vincular Grado</button>
+            <button disabled={loading} onClick={handleCreateGrade} className="bg-school-green text-white rounded-2xl font-black uppercase shadow-lg text-xs">Vincular Grado</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {courses.map(c => (
@@ -124,7 +144,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
           </div>
         </div>
 
-        {/* BLOQUE: ACADEMICA */}
+        {/* BLOQUE: ESTRUCTURA ACADÉMICA */}
         <div className="pt-10 border-t">
           <h3 className="text-sm font-black text-gray-400 mb-6 uppercase flex items-center gap-2 tracking-widest">
             <i className="fas fa-book text-school-green"></i> 3. Estructura Académica
@@ -138,6 +158,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
                   if(!newArea) return;
                   const { error } = await supabase.from('areas_academicas').insert([{ name: newArea }]);
                   if (!error) { setNewArea(''); window.dispatchEvent(new Event('storage')); }
+                  else { alert(error.message); }
                 }} className="bg-school-green text-white px-6 rounded-2xl font-black shadow-md text-xs">Crear</button>
               </div>
               <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2 text-xs font-bold">
@@ -162,6 +183,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, setCourses, areas, set
                     if(!newSubject.areaId || !newSubject.name) return;
                     const { error } = await supabase.from('asignaturas').insert([{ name: newSubject.name, area_id: newSubject.areaId }]);
                     if (!error) { setNewSubject({ areaId: '', name: '' }); window.dispatchEvent(new Event('storage')); }
+                    else { alert(error.message); }
                   }} className="bg-school-green text-white px-6 rounded-2xl font-black shadow-md text-xs">Agregar</button>
                 </div>
               </div>
