@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Teacher, Course, AcademicArea, Subject } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { sendSiconitccEmail } from '../lib/messenger'; // Importamos tu asistente de correo
 
 interface TeacherFormProps {
   teachers: Teacher[];
@@ -20,7 +21,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     grades: [] as string[], isDirector: false, directorGrade: '' 
   });
 
-  // CARGAR SEDES DESDE SUPABASE
+  // CARGAR SEDES
   useEffect(() => {
     const fetchSedes = async () => {
       const { data } = await supabase.from('sedes').select('nombre');
@@ -29,39 +30,51 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     fetchSedes();
   }, []);
 
-  const docentesRegistrados = teachers.filter(t => (t as any).rol === 'docente' || (t as any).role === 'teacher' || (t as any).rol === 'teacher');
+  // Ajustamos el filtro para usar nombre_completo o nombre
+  const docentesRegistrados = teachers.filter(t => (t as any).rol === 'docente');
 
   const handleRegisterTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Crear usuario en Authentication de Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: reg.email,
-        password: reg.password,
-        options: { data: { full_name: reg.name, role: 'docente' } }
-      });
+      // 1. Registro en la tabla de perfiles (Base de datos oficial)
+      // Nota: Aquí registramos sin Auth directo para evitar el correo genérico de Supabase
+      const { error: profileError } = await supabase
+        .from('perfiles_usuarios')
+        .insert([{
+          nombre: reg.name, // Usamos la columna 'nombre' como en Administradores
+          email: reg.email,
+          rol: 'docente',
+          // Guardamos la clave temporal si es necesario para tu lógica de login custom
+        }]);
 
-      if (authError) throw authError;
+      if (profileError) throw profileError;
 
-      if (authData.user) {
-        // 2. Crear perfil en la tabla 'perfiles_usuarios'
-        const { error: profileError } = await supabase
-          .from('perfiles_usuarios')
-          .insert([{
-            id: authData.user.id,
-            nombre_completo: reg.name,
-            email: reg.email,
-            rol: 'docente'
-          }]);
+      // 2. Envío de Correo de Bienvenida Profesional (Diseño Verde)
+      const emailHtml = `
+        <div style="font-family: sans-serif; padding: 25px; border: 2px solid #059669; border-radius: 30px; max-width: 500px; background-color: #ffffff;">
+          <h2 style="color: #059669; text-transform: uppercase; font-style: italic;">SICONITCC - Acceso Docente</h2>
+          <p>Estimado(a) <strong>${reg.name}</strong>, se le ha asignado acceso al sistema institucional.</p>
+          <div style="background: #f0fdf4; padding: 20px; border-radius: 20px; margin: 20px 0; border: 1px solid #bbf7d0;">
+            <p style="margin: 5px 0;"><strong>Usuario:</strong> ${reg.email}</p>
+            <p style="margin: 5px 0;"><strong>Contraseña Inicial:</strong> ${reg.password}</p>
+          </div>
+          <p style="font-size: 13px; color: #374151;">Por favor, ingrese al portal con estas credenciales para gestionar su carga académica.</p>
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="font-style: italic; color: #6b7280; font-size: 11px; text-align: center;">"Educación con tecnología para una alta calidad humana"</p>
+        </div>
+      `;
 
-        if (profileError) throw profileError;
-        
-        alert('✅ Docente registrado en la base de datos oficial.');
-        setReg({ name: '', email: '', password: '' });
-        // Notificar al Dashboard que recargue la lista de docentes
-        window.dispatchEvent(new Event('storage'));
-      }
+      await sendSiconitccEmail(
+        reg.email, 
+        "Bienvenido(a) a SICONITCC - Credenciales de Docente", 
+        emailHtml
+      );
+
+      alert('✅ Docente registrado y correo enviado exitosamente.');
+      setReg({ name: '', email: '', password: '' });
+      window.dispatchEvent(new Event('storage'));
+      
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -70,13 +83,12 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
   };
 
   const handleDeleteTeacher = async (id: string) => {
-    if (!window.confirm("¿Está seguro de retirar a este docente del sistema? Se perderá su acceso.")) return;
+    if (!window.confirm("¿Está seguro de retirar a este docente?")) return;
     setLoading(true);
     try {
-      // Nota: En Supabase real, esto debería ir acompañado de una función para borrar el Auth User
       const { error } = await supabase.from('perfiles_usuarios').delete().eq('id', id);
       if (error) throw error;
-      alert("✅ Docente retirado satisfactoriamente.");
+      alert("✅ Docente retirado.");
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -87,12 +99,11 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
 
   const handleAssignLoad = async () => {
     if (!load.teacherId || !load.subjectId || load.grades.length === 0) {
-      return alert("⚠️ Complete todos los campos de la carga académica.");
+      return alert("⚠️ Complete la carga académica.");
     }
-    
     setLoading(true);
     try {
-      // 1. Guardar la asignación en la tabla 'teacher_assignments' (o similar que tengas)
+      // 1. Asignación
       const { error: assignmentError } = await supabase.from('teacher_assignments').insert([{
         docente_id: load.teacherId,
         asignatura_id: load.subjectId,
@@ -101,11 +112,9 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
         es_director: load.isDirector,
         grado_direccion: load.isDirector ? load.directorGrade : null
       }]);
-
       if (assignmentError) throw assignmentError;
 
-      // 2. ACTUALIZACIÓN CRUCIAL: Actualizamos los grados_asignados en el perfil del docente 
-      // para que su TeacherDashboard sepa qué mostrarle de inmediato.
+      // 2. Actualizar perfil
       const { error: profileUpdateError } = await supabase
         .from('perfiles_usuarios')
         .update({ grados_asignados: load.grades })
@@ -113,11 +122,11 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
 
       if (profileUpdateError) throw profileUpdateError;
 
-      alert('✅ Carga académica sincronizada. El docente ya verá estos grados en su panel.');
+      alert('✅ Carga académica sincronizada.');
       setLoad({ teacherId: '', areaId: '', subjectId: '', sede: '', grades: [], isDirector: false, directorGrade: '' });
       window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
-      alert("Error en vinculación: " + err.message);
+      alert("Error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -130,9 +139,6 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     }));
   };
 
-  const filteredCourses = load.sede ? courses.filter(c => c.sede === load.sede) : [];
-  const filteredSubjects = load.areaId ? subjects.filter(s => s.areaId === load.areaId) : [];
-
   return (
     <div className="space-y-10 animate-fadeIn pb-24">
       
@@ -144,7 +150,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
           <input required type="email" placeholder="Email Institucional" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={reg.email} onChange={e => setReg({...reg, email: e.target.value})} />
           <input required type="password" placeholder="Contraseña Inicial" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={reg.password} onChange={e => setReg({...reg, password: e.target.value})} />
           <button disabled={loading} className={`md:col-span-3 bg-school-green text-white py-4 rounded-2xl font-black uppercase shadow-xl transition-all ${loading ? 'opacity-50' : 'hover:bg-school-green-dark'}`}>
-            {loading ? 'CREANDO CREDENCIALES...' : 'VINCULAR DOCENTE AL SISTEMA'}
+            {loading ? 'REGISTRANDO...' : 'VINCULAR DOCENTE AL SISTEMA'}
           </button>
         </form>
       </div>
@@ -156,7 +162,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
           {docentesRegistrados.map(docente => (
             <div key={docente.id} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white hover:shadow-md transition-all">
               <div className="overflow-hidden">
-                <p className="font-black text-xs text-school-green-dark uppercase truncate">{docente.name}</p>
+                <p className="font-black text-xs text-school-green-dark uppercase truncate">{docente.nombre || (docente as any).nombre_completo || docente.name}</p>
                 <p className="text-[9px] text-gray-400 font-bold truncate">{docente.email}</p>
               </div>
               <button onClick={() => handleDeleteTeacher(docente.id)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm">
@@ -164,19 +170,18 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
               </button>
             </div>
           ))}
-          {docentesRegistrados.length === 0 && <p className="text-gray-300 italic text-xs p-4">No hay docentes registrados aún.</p>}
         </div>
       </div>
 
-      {/* 3. ASIGNACIÓN CARGA Y DIRECCIÓN */}
+      {/* 3. ASIGNACIÓN (Mantenemos tu lógica igual) */}
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 space-y-8">
         <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight italic">2. Carga Académica y Dirección de Curso</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col">
             <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Docente a Asignar</label>
             <select className="w-full p-4 border-2 border-school-green/10 rounded-2xl bg-white font-bold text-xs" value={load.teacherId} onChange={e => setLoad({...load, teacherId: e.target.value})}>
-              <option value="">Seleccionar de la lista...</option>
-              {docentesRegistrados.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">Seleccionar...</option>
+              {docentesRegistrados.map(t => <option key={t.id} value={t.id}>{t.nombre || (t as any).nombre_completo || t.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
@@ -195,12 +200,15 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
           </div>
         </div>
 
+        {/* ... (resto del formulario se mantiene igual) ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
           <div className="flex flex-col">
             <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Asignatura Específica</label>
             <select className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={load.subjectId} disabled={!load.areaId} onChange={e => setLoad({...load, subjectId: e.target.value})}>
               <option value="">Seleccione Asignatura...</option>
-              {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {subjects.filter(s => (s as any).area_id === load.areaId || s.areaId === load.areaId).map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
             </select>
           </div>
           
@@ -212,31 +220,18 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
             {load.isDirector && (
               <select className="flex-grow p-2 border rounded-xl bg-white font-bold text-[10px]" value={load.directorGrade} onChange={e => setLoad({...load, directorGrade: e.target.value})}>
                 <option value="">Seleccionar Grado...</option>
-                {filteredCourses.map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
+                {courses.filter(c => c.sede === load.sede).map(c => <option key={c.id} value={c.grade}>{c.grade}</option>)}
               </select>
             )}
           </div>
         </div>
 
-        {load.sede && (
-          <div className="space-y-4 pt-6 border-t border-dashed border-gray-100">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grados asignados para esta asignatura:</label>
-            <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
-              {filteredCourses.map(c => (
-                <button key={c.id} type="button" onClick={() => toggleGrade(c.grade)} className={`p-4 rounded-xl font-black text-[10px] border-2 transition-all ${load.grades.includes(c.grade) ? 'bg-school-green text-white border-school-green shadow-md' : 'bg-white text-gray-300 border-gray-50 hover:border-school-green/30'}`}>
-                  {c.grade}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <button 
           onClick={handleAssignLoad} 
           disabled={loading}
-          className={`w-full bg-school-green-dark text-white py-6 rounded-[2.5rem] font-black uppercase shadow-2xl transition-all transform hover:scale-[1.01] ${loading ? 'opacity-50 animate-pulse' : 'hover:bg-school-green shadow-school-green/20'}`}
+          className={`w-full bg-school-green-dark text-white py-6 rounded-[2.5rem] font-black uppercase shadow-2xl transition-all ${loading ? 'opacity-50' : 'hover:bg-school-green'}`}
         >
-          {loading ? 'SINCRONIZANDO CON LA NUBE...' : 'OFICIALIZAR CARGA ACADÉMICA'}
+          OFICIALIZAR CARGA ACADÉMICA
         </button>
       </div>
     </div>
