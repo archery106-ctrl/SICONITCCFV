@@ -2,8 +2,8 @@ import { supabase } from './supabaseClient';
 
 export const sendSiconitccEmail = async (to: string, subject: string, html: string) => {
   try {
-    // Invocamos la función con headers explícitos
-    const { data, error } = await supabase.functions.invoke('quick-worker', {
+    // Sincronizado con el nombre que pusiste en el panel de Supabase
+    const { data, error } = await supabase.functions.invoke('send-email', {
       body: { to, subject, html },
       headers: {
         "Content-Type": "application/json",
@@ -15,7 +15,7 @@ export const sendSiconitccEmail = async (to: string, subject: string, html: stri
       throw error;
     }
 
-    console.log("✅ Correo procesado correctamente por la Edge Function");
+    console.log("✅ Función invocada con éxito");
     return { success: true, data };
   } catch (err: any) {
     console.error("❌ Error al llamar a la función:", err);
