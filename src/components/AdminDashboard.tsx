@@ -11,26 +11,35 @@ import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
 
-// --- COMPONENTE INTERNO: NUEVO ADMINISTRADOR ---
+// --- COMPONENTE INTERNO: NUEVO ADMINISTRADOR (CORREGIDO) ---
 const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData }) => {
   const [formData, setFormData] = useState({ name: '', charge: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoading(true); // Se activa el estado de carga
     try {
       const { error } = await supabase.from('perfiles_usuarios').insert([
-        { nombre: formData.name, cargo: formData.charge, email: formData.email, rol: 'admin' }
+        { 
+          nombre: formData.name, 
+          cargo: formData.charge, 
+          email: formData.email, 
+          rol: 'admin' 
+        }
       ]);
+      
       if (error) throw error;
+      
       alert("✅ Administrador registrado exitosamente.");
       setFormData({ name: '', charge: '', email: '', password: '' });
       refreshData();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      console.error("Error en registro:", err);
+      alert("❌ Error: " + (err.message || "No se pudo conectar con la base de datos"));
     } finally {
-      setLoading(false);
+      // ESTO EVITA QUE SE QUEDE EN GRIS: Se libera el loading pase lo que pase
+      setLoading(false); 
     }
   };
 
@@ -38,12 +47,22 @@ const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData })
     <div className="bg-white p-10 rounded-[3rem] shadow-premium border-2 border-red-50 animate-fadeIn space-y-6">
       <h3 className="text-3xl font-black text-red-600 uppercase italic text-center">Registrar Nuevo Administrador</h3>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input type="text" placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-        <input type="text" placeholder="Cargo (Ej: Rectoría)" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.charge} onChange={e => setFormData({...formData, charge: e.target.value})} required />
-        <input type="email" placeholder="Correo Electrónico" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-        <input type="password" placeholder="Contraseña de Acceso" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-        <button disabled={loading} className="md:col-span-2 p-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700 transition-all">
-          {loading ? 'Sincronizando...' : 'Dar de Alta Administrador'}
+        <input type="text" placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs outline-none focus:ring-2 focus:ring-red-100" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+        <input type="text" placeholder="Cargo (Ej: Rectoría)" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs outline-none focus:ring-2 focus:ring-red-100" value={formData.charge} onChange={e => setFormData({...formData, charge: e.target.value})} required />
+        <input type="email" placeholder="Correo Electrónico" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs outline-none focus:ring-2 focus:ring-red-100" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+        <input type="password" placeholder="Contraseña de Acceso" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs outline-none focus:ring-2 focus:ring-red-100" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
+        
+        <button 
+          disabled={loading} 
+          className={`md:col-span-2 p-5 rounded-2xl font-black uppercase text-xs shadow-lg transition-all ${
+            loading ? 'bg-gray-400 cursor-not-allowed opacity-70' : 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
+          }`}
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <i className="fas fa-spinner animate-spin"></i> PROCESANDO...
+            </span>
+          ) : 'Dar de Alta Administrador'}
         </button>
       </form>
     </div>
@@ -80,11 +99,11 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
       case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={[]} subjects={[]} />;
       case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={()=>{}} />;
-      case 'insert-admin': return <InsertAdminForm refreshData={loadData} />; // <-- IMPLEMENTADO
+      case 'insert-admin': return <InsertAdminForm refreshData={loadData} />;
       case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
       case 'annotations': return <AnnotationAdmin />;
       case 'stats': return <StatsView students={students} teachers={teachers} courses={courses} />;
-      case 'passwords': return <PasswordManagement teachers={teachers} />; // <-- VINCULADO
+      case 'passwords': return <PasswordManagement teachers={teachers} />;
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas':
