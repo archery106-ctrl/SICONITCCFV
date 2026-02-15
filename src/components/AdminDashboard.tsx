@@ -76,7 +76,7 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
       case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={[]} subjects={[]} />;
       case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={loadData} />;
-      case 'insert-admin': return <InsertAdminForm onComplete={loadData} />; // Se pasa la función corregida
+      case 'insert-admin': return <InsertAdminForm onComplete={loadData} />; 
       case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
       case 'annotations': return <AnnotationAdmin />;
       case 'stats': return <StatsView students={students} teachers={teachers} courses={courses} />;
@@ -89,12 +89,43 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
       case 'about-us':
         return (
           <div className="h-full flex items-center justify-center p-10 animate-fadeIn">
-            <div className="bg-white p-12 rounded-[4rem] shadow-premium text-center border max-w-2xl">
-              <h2 className="text-3xl font-black text-school-green-dark uppercase italic">SICONITCC V3.4.2</h2>
-              <p className="mt-4 font-bold text-gray-400 uppercase text-[10px] tracking-widest italic border-b pb-4">I.E.D. Capellanía - Chiquinquirá</p>
-              <div className="mt-6 space-y-2 text-xs font-bold text-gray-600 uppercase">
-                <p>Desarrollado por:</p>
-                <p className="text-school-green-dark">Patrick Cañón & Denys García</p>
+            <div className="bg-white p-12 rounded-[4rem] shadow-premium text-center border-2 border-school-green/10 max-w-2xl">
+              <h2 className="text-4xl font-black text-school-green-dark uppercase italic mb-6 tracking-tighter">
+                SICONITCC
+              </h2>
+              
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">Investigadores:</p>
+                  <p className="text-xl font-black text-gray-800 uppercase italic">
+                    Cañón Patrick & García Denys
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">Desarrollo Web:</p>
+                  <p className="text-lg font-black text-school-green uppercase italic">
+                    Cañón Patrick
+                  </p>
+                </div>
+
+                <div className="pt-4 px-6">
+                  <p className="text-sm font-bold text-gray-600 italic leading-tight">
+                    "Educación con tecnología para una alta calidad humana"
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-10 pt-6 border-t border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic mb-2">
+                  I.E.D. Instituto Técnico Capellanía
+                </p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">
+                  Fúquene Cundinamarca
+                </p>
+                <p className="mt-4 text-[8px] opacity-40 font-bold uppercase">
+                  Todos los derechos reservados
+                </p>
               </div>
             </div>
           </div>
