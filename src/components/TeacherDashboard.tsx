@@ -26,7 +26,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
     const fetchTeacherProfile = async () => {
       const { data, error } = await supabase
         .from('perfiles_usuarios')
-        .select('grados_asignados') // Nombre de columna en tu tabla
+        .select('grados_asignados')
         .eq('id', user.id)
         .single();
       
@@ -46,7 +46,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user }) => {
           .from('estudiantes')
           .select('*')
           .eq('grade', selectedGrade)
-          .eq('retirado', false); // IMPORTANTE: Solo activos
+          .eq('retirado', false);
 
         if (!error && data) {
           const mappedStudents: Student[] = data.map(s => ({
@@ -221,17 +221,18 @@ const AboutUs: React.FC = () => (
   <div className="h-full flex flex-col items-center justify-center text-center p-12 bg-white rounded-[4rem] shadow-premium m-8 animate-fadeIn">
     <i className="fas fa-microchip text-5xl text-school-green mb-6"></i>
     <h2 className="text-2xl font-black text-school-green-dark uppercase mb-4 italic tracking-widest">SICONITCC INSTITUCIONAL</h2>
-    <div className="grid grid-cols-2 gap-8 mt-6">
-      <div className="text-center">
-        <p className="text-gray-400 font-black text-[9px] uppercase tracking-widest mb-1">Director de Proyecto</p>
-        <p className="font-bold text-slate-800 text-sm italic">Denys E. García</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6 w-full max-w-lg">
+      <div className="text-center p-4 border-l-2 border-school-green">
+        <p className="text-gray-400 font-black text-[9px] uppercase tracking-widest mb-1">Investigadores</p>
+        <p className="font-bold text-slate-800 text-sm italic">Cañón Patrick Y. & García Denys E.</p>
       </div>
-      <div className="text-center">
-        <p className="text-gray-400 font-black text-[9px] uppercase tracking-widest mb-1">Arquitectura Web</p>
-        <p className="font-bold text-slate-800 text-sm italic">Patrick Y. Cañón</p>
+      <div className="text-center p-4 border-l-2 border-school-green">
+        <p className="text-gray-400 font-black text-[9px] uppercase tracking-widest mb-1">Desarrollador Web</p>
+        <p className="font-bold text-slate-800 text-sm italic">Cañón Patrick Y.</p>
       </div>
     </div>
-    <p className="mt-12 text-[8px] font-black text-gray-300 uppercase tracking-[0.4em]">© 2026 I.E.D. INSTITUTO TÉCNICO COMERCIAL DE CAPELLANÍA</p>
+    <p className="mt-8 text-school-green-dark font-black italic text-sm tracking-tight">"Educación con tecnología para una alta calidad humana"</p>
+    <p className="mt-12 text-[8px] font-black text-gray-300 uppercase tracking-[0.4em]">Todos los derechos reservados © 2026</p>
   </div>
 );
 
