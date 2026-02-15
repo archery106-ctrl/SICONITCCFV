@@ -2,9 +2,8 @@ import { supabase } from './supabaseClient';
 
 export const sendSiconitccEmail = async (to: string, subject: string, html: string) => {
   try {
-    // Sincronizado con el nombre que pusiste en el panel de Supabase
-    // Esta llamada enviará la petición POST a la Edge Function
-    const { data, error } = await supabase.functions.invoke('send-email', {
+    // CAMBIO CLAVE: Usamos 'quick-worker' porque es el nombre real en la URL de tu Supabase
+    const { data, error } = await supabase.functions.invoke('quick-worker', {
       body: { to, subject, html },
       headers: {
         "Content-Type": "application/json",
