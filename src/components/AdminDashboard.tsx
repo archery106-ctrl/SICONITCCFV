@@ -11,6 +11,45 @@ import PasswordManagement from './PasswordManagement';
 import ConvivenciaGestor from './ConvivenciaGestor';
 import { supabase } from '../lib/supabaseClient';
 
+// --- COMPONENTE INTERNO: NUEVO ADMINISTRADOR ---
+const InsertAdminForm: React.FC<{ refreshData: () => void }> = ({ refreshData }) => {
+  const [formData, setFormData] = useState({ name: '', charge: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('perfiles_usuarios').insert([
+        { nombre: formData.name, cargo: formData.charge, email: formData.email, rol: 'admin' }
+      ]);
+      if (error) throw error;
+      alert("✅ Administrador registrado exitosamente.");
+      setFormData({ name: '', charge: '', email: '', password: '' });
+      refreshData();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white p-10 rounded-[3rem] shadow-premium border-2 border-red-50 animate-fadeIn space-y-6">
+      <h3 className="text-3xl font-black text-red-600 uppercase italic text-center">Registrar Nuevo Administrador</h3>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" placeholder="Nombre Completo" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+        <input type="text" placeholder="Cargo (Ej: Rectoría)" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.charge} onChange={e => setFormData({...formData, charge: e.target.value})} required />
+        <input type="email" placeholder="Correo Electrónico" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+        <input type="password" placeholder="Contraseña de Acceso" className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
+        <button disabled={loading} className="md:col-span-2 p-5 bg-red-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-red-700 transition-all">
+          {loading ? 'Sincronizando...' : 'Dar de Alta Administrador'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
 const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [leftVisible, setLeftVisible] = useState(true);
@@ -41,10 +80,11 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
       case 'course-management': return <CourseForm courses={courses} setCourses={()=>{}} areas={[]} setAreas={()=>{}} subjects={[]} setSubjects={()=>{}} />;
       case 'teacher-management': return <TeacherForm teachers={teachers} setTeachers={setTeachers} courses={courses} areas={[]} subjects={[]} />;
       case 'insert-student': return <StudentForm courses={courses} sedes={sedes} onAdd={()=>{}} />;
+      case 'insert-admin': return <InsertAdminForm refreshData={loadData} />; // <-- IMPLEMENTADO
       case 'convivencia': return <ConvivenciaGestor students={students} sedes={sedes} courses={courses} />;
       case 'annotations': return <AnnotationAdmin />;
       case 'stats': return <StatsView students={students} teachers={teachers} courses={courses} />;
-      case 'passwords': return <PasswordManagement teachers={teachers} />;
+      case 'passwords': return <PasswordManagement teachers={teachers} />; // <-- VINCULADO
       case 'piar-enroll':
       case 'piar-follow':
       case 'piar-actas':
@@ -86,6 +126,11 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
                     <span className="font-black uppercase text-[9px]">Estudiantes</span>
                   </button>
 
+                  <button onClick={() => setActiveTab('insert-admin')} className="p-6 bg-red-500 text-white rounded-[2rem] shadow-lg hover:scale-105 transition-all flex flex-col items-center gap-2">
+                    <i className="fas fa-user-shield text-2xl"></i>
+                    <span className="font-black uppercase text-[9px]">Nuevo Admin</span>
+                  </button>
+
                   <button onClick={() => setActiveTab('annotations')} className="p-6 bg-red-700 text-white rounded-[2rem] shadow-lg hover:scale-105 transition-all flex flex-col items-center gap-2">
                     <i className="fas fa-book-reader text-2xl"></i>
                     <span className="font-black uppercase text-[9px]">Bandeja Anotaciones</span>
@@ -105,11 +150,6 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
                     <i className="fas fa-key text-2xl"></i>
                     <span className="font-black uppercase text-[9px]">Contraseñas</span>
                   </button>
-
-                  <button onClick={() => setActiveTab('about-us')} className="p-6 bg-school-yellow text-school-green-dark rounded-[2rem] shadow-lg hover:scale-105 transition-all flex flex-col items-center gap-2">
-                    <i className="fas fa-info-circle text-2xl"></i>
-                    <span className="font-black uppercase text-[9px]">About Us</span>
-                  </button>
                </div>
             </div>
           </div>
@@ -128,6 +168,7 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
             { id: 'course-management', label: 'Sedes y Grados', icon: 'fa-school' },
             { id: 'teacher-management', label: 'Docentes', icon: 'fa-chalkboard-teacher' },
             { id: 'insert-student', label: 'Estudiantes', icon: 'fa-user-graduate' },
+            { id: 'insert-admin', label: 'Nuevo Admin', icon: 'fa-user-shield' },
             { id: 'annotations', label: 'Anotaciones', icon: 'fa-book-open' },
             { id: 'convivencia', label: 'Excel Convivencia', icon: 'fa-file-excel' },
             { id: 'stats', label: 'Estadísticas', icon: 'fa-chart-pie' },
