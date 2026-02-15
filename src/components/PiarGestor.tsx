@@ -23,6 +23,23 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes, courses }) =
     nombre_cuidador: '', parentesco_cuidador: '', nivel_cuidador: 'Bachillerato', tel_cuidador: ''
   });
 
+  useEffect(() => {
+    const fetchTabData = async () => {
+      let table = '';
+      if (activeSubTab === 'piar-follow') table = 'registros_piar';
+      else if (activeSubTab === 'piar-actas') table = 'actas_acuerdo_piar';
+      else if (activeSubTab === 'piar-review') table = 'informes_competencias';
+
+      if (table) {
+        setLoading(true);
+        const { data } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+        setPiarRecords(data || []);
+        setLoading(false);
+      }
+    };
+    fetchTabData();
+  }, [activeSubTab]);
+
   const handleStudentSelection = (id: string) => {
     const s = students.find((st: any) => st.id === id);
     if (s) {
@@ -36,117 +53,114 @@ const PiarGestor: React.FC<any> = ({ activeSubTab, students, sedes, courses }) =
         telefono: s.phone || '',
         email: s.email || '',
         nombre_madre: s.motherName || '',
-        nombre_padre: s.fatherName || '',
-        // Si tienes cuidador en la BD de estudiantes, se mapea aquí:
-        nombre_cuidador: s.guardianName || '',
-        tel_cuidador: s.guardianPhone || ''
+        nombre_padre: s.fatherName || ''
       }));
     }
   };
 
+  // --- RENDER ANEXO 1 (INSCRIPCIÓN) ---
   if (activeSubTab === 'piar-enroll') {
     const filteredStudents = students.filter((s: any) => s.grade === courses?.find((c: any) => c.id === selectedCourseId)?.grade);
-    
+
     return (
-      <div className="bg-white p-10 rounded-[3rem] shadow-premium animate-fadeIn space-y-12 max-w-5xl mx-auto border border-gray-100 overflow-y-auto max-h-[85vh] custom-scrollbar">
-        <header className="border-b-8 border-double border-school-yellow pb-6 text-center">
-          <h2 className="text-3xl font-black text-school-green-dark uppercase italic tracking-tighter">Anexo 1: Focalización e Información General</h2>
-          <div className="flex justify-center gap-4 mt-6">
-            <input placeholder="Funcionario que diligencia" className="p-3 border rounded-2xl text-[10px] font-bold w-1/2 bg-gray-50" onChange={e => setFormData({...formData, quien_diligencia: e.target.value})} />
-            <input placeholder="Cargo" className="p-3 border rounded-2xl text-[10px] font-bold w-1/2 bg-gray-50" onChange={e => setFormData({...formData, cargo_diligencia: e.target.value})} />
+      <div className="bg-white p-8 rounded-[2rem] shadow-premium animate-fadeIn space-y-8 max-w-5xl mx-auto overflow-y-auto max-h-[80vh] custom-scrollbar border-4 border-school-green">
+        <header className="bg-school-green p-6 rounded-2xl text-white text-center">
+          <h2 className="text-2xl font-black uppercase italic">Anexo 1: Información General</h2>
+          <div className="flex flex-wrap justify-center gap-4 mt-4 text-black">
+            <input placeholder="Quien diligencia" className="p-2 rounded-lg text-xs w-64" value={formData.quien_diligencia} onChange={e => setFormData({...formData, quien_diligencia: e.target.value})} />
+            <input placeholder="Cargo" className="p-2 rounded-lg text-xs w-64" value={formData.cargo_diligencia} onChange={e => setFormData({...formData, cargo_diligencia: e.target.value})} />
           </div>
         </header>
 
-        <form onSubmit={(e) => { e.preventDefault(); alert("Guardando..."); }} className="space-y-12">
-          
-          {/* 1. SELECCIÓN Y DATOS BÁSICOS */}
-          <section className="space-y-6 bg-gray-50 p-8 rounded-[3rem]">
-            <h3 className="text-xs font-black text-school-green uppercase italic border-l-4 border-school-green pl-2">1. Identificación</h3>
+        <form className="space-y-10 pb-10">
+          {/* BLOQUE 1: UBICACIÓN */}
+          <div className="bg-gray-50 p-6 rounded-2xl border-2 border-dashed border-school-green/20">
+            <h3 className="font-black text-school-green uppercase text-sm mb-4 italic">1. Ubicación y Estudiante</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select className="p-4 border rounded-xl text-xs font-bold" onChange={e => setFormData({...formData, sede: e.target.value})}>
-                <option value="">Sede...</option>
-                {sedes.map((s: string) => <option key={s} value={s}>{s}</option>)}
+              <select className="p-3 border rounded-xl text-xs font-bold" onChange={e => setFormData({...formData, sede: e.target.value})}>
+                <option value="">Sede...</option>{sedes.map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
-              <select className="p-4 border rounded-xl text-xs font-bold" onChange={e => setSelectedCourseId(e.target.value)}>
-                <option value="">Grado...</option>
-                {courses?.map((c: any) => <option key={c.id} value={c.id}>{c.grade}</option>)}
+              <select className="p-3 border rounded-xl text-xs font-bold" onChange={e => setSelectedCourseId(e.target.value)}>
+                <option value="">Grado...</option>{courses?.map((c: any) => <option key={c.id} value={c.id}>{c.grade}</option>)}
               </select>
-              <select className="p-4 border rounded-xl font-bold text-xs" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}>
-                <option value="">Estudiante...</option>
-                {filteredStudents.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <select className="p-3 border rounded-xl text-xs font-bold" value={formData.estudiante_id} onChange={e => handleStudentSelection(e.target.value)}>
+                <option value="">Estudiante...</option>{filteredStudents.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
-          </section>
+          </div>
 
-          {/* CARACTERIZACIÓN SOCIAL (PREGUNTAS SI/NO FALTANTES) */}
-          <section className="p-8 border-2 border-school-yellow/20 rounded-[3rem] space-y-6">
-            <h3 className="text-xs font-black text-school-yellow-dark uppercase italic">Caracterización Social</h3>
+          {/* BLOQUE 2: SALUD (CASILLAS SI/NO) */}
+          <div className="p-6 bg-red-50/30 border-2 border-red-100 rounded-2xl space-y-6">
+            <h3 className="font-black text-red-600 uppercase text-sm italic">2. Entorno Salud</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                {[
-                 { label: "¿Pertenece a grupo étnico?", field: "grupo_etnico" },
-                 { label: "¿Víctima del conflicto?", field: "victima_conflicto" },
-                 { label: "¿Tiene registro de víctima?", field: "registro_victima" },
-                 { label: "¿Gestión Registro Civil?", field: "registro_civil_gestion" }
+                 { label: "¿Afiliación Salud?", field: "afiliacion_salud" },
+                 { label: "¿Diagnóstico Médico?", field: "diagnostico_medico" },
+                 { label: "¿Asiste a terapias?", field: "asiste_terapias" },
+                 { label: "¿Consume medicamentos?", field: "consume_medicamentos" }
                ].map(q => (
-                 <div key={q.field} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border">
-                    <span className="text-[10px] font-bold uppercase">{q.label}</span>
-                    <select className="text-[10px] font-black" onChange={e => setFormData({...formData, [q.field]: e.target.value})}>
-                      <option value="No">No</option><option value="Si">Si</option>
-                    </select>
+                 <div key={q.field} className="flex justify-between items-center p-3 bg-white rounded-xl border shadow-sm">
+                   <span className="text-[10px] font-black uppercase text-gray-500">{q.label}</span>
+                   <select className="text-[10px] font-black outline-none" onChange={e => setFormData({...formData, [q.field]: e.target.value})}>
+                     <option value="No">No</option><option value="Si">Si</option>
+                   </select>
                  </div>
                ))}
             </div>
-          </section>
+            <input placeholder="Especifique Diagnóstico, Medicamento o Terapias..." className="w-full p-4 border rounded-xl text-xs" />
+          </div>
 
-          {/* 2. ENTORNO SALUD (DETALLADO) */}
-          <section className="p-8 bg-red-50/20 border-2 border-red-100 rounded-[3rem] space-y-6">
-            <h3 className="text-xs font-black text-red-600 uppercase italic">2. Entorno Salud</h3>
+          {/* BLOQUE 3: HOGAR Y CUIDADOR */}
+          <div className="p-6 bg-blue-50/30 border-2 border-blue-100 rounded-2xl space-y-6">
+            <h3 className="font-black text-blue-600 uppercase text-sm italic">3. Entorno Hogar y Cuidador</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex justify-between items-center bg-white p-4 rounded-xl border">
-                  <span className="text-[10px] font-black uppercase">¿Atendido por sector salud?</span>
-                  <select className="text-[10px] font-black" onChange={e => setFormData({...formData, atendido_salud: e.target.value})}>
-                    <option value="No">No</option><option value="Si">Si</option>
-                  </select>
-               </div>
-               <input placeholder="Frecuencia de atención" className="p-4 border rounded-xl text-xs" onChange={e => setFormData({...formData, frecuencia_salud: e.target.value})} />
+               <input placeholder="Nombre Madre" className="p-3 border rounded-xl text-xs bg-gray-100 font-bold" value={formData.nombre_madre} readOnly />
+               <input placeholder="Nombre Padre" className="p-3 border rounded-xl text-xs bg-gray-100 font-bold" value={formData.nombre_padre} readOnly />
+               <input placeholder="Nombre Cuidador" className="p-3 border rounded-xl text-xs" onChange={e => setFormData({...formData, nombre_cuidador: e.target.value})} />
+               <input placeholder="Teléfono Cuidador" className="p-3 border rounded-xl text-xs" onChange={e => setFormData({...formData, tel_cuidador: e.target.value})} />
             </div>
-          </section>
+          </div>
 
-          {/* 3. ENTORNO HOGAR Y CUIDADOR (BLOQUE RESTAURADO) */}
-          <section className="p-8 bg-blue-50/20 border-2 border-blue-100 rounded-[3rem] space-y-8">
-            <h3 className="text-xs font-black text-blue-600 uppercase italic">3. Entorno Hogar y Familia</h3>
-            
-            {/* PADRES */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <input placeholder="Nombre Madre" className="p-4 border rounded-xl text-xs font-bold bg-white" value={formData.nombre_madre} readOnly />
-              <input placeholder="Nombre Padre" className="p-4 border rounded-xl text-xs font-bold bg-white" value={formData.nombre_padre} readOnly />
-            </div>
-
-            {/* BLOQUE CUIDADOR - FALTANTE ANTERIORMENTE */}
-            <div className="pt-6 border-t border-blue-200 space-y-4">
-               <p className="text-[10px] font-black uppercase text-blue-400 italic">Información del Cuidador (Si aplica)</p>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input placeholder="Nombre del Cuidador" className="p-4 border rounded-xl text-xs bg-white" value={formData.nombre_cuidador} onChange={e => setFormData({...formData, nombre_cuidador: e.target.value})} />
-                  <input placeholder="Parentesco con Estudiante" className="p-4 border rounded-xl text-xs bg-white" value={formData.parentesco_cuidador} onChange={e => setFormData({...formData, parentesco_cuidador: e.target.value})} />
-                  <select className="p-4 border rounded-xl text-xs font-bold" onChange={e => setFormData({...formData, nivel_cuidador: e.target.value})}>
-                    <option>Nivel Educativo Cuidador...</option>
-                    <option value="Primaria">Primaria</option><option value="Bachillerato">Bachillerato</option>
-                    <option value="Técnico">Técnico</option><option value="Universitario">Universitario</option>
-                  </select>
-                  <input placeholder="Teléfono Cuidador" className="p-4 border rounded-xl text-xs bg-white" value={formData.tel_cuidador} onChange={e => setFormData({...formData, tel_cuidador: e.target.value})} />
-               </div>
-            </div>
-          </section>
-
-          <button type="submit" className="w-full bg-school-green text-white py-8 rounded-[3rem] font-black uppercase shadow-premium hover:scale-[1.01] transition-all text-xl">
-            Guardar Focalización Completa (Anexo 1)
+          <button type="submit" className="w-full bg-school-green text-white py-6 rounded-2xl font-black uppercase shadow-xl hover:scale-[1.01] transition-all">
+            Guardar Focalización Anexo 1
           </button>
         </form>
       </div>
     );
   }
 
-  return <div className="p-20 text-center text-gray-300 font-black uppercase italic">Módulo {activeSubTab} Cargado</div>;
+  // --- RENDER ANEXOS 2, 3 Y 4 (LISTADOS) ---
+  const titles:any = { 'piar-follow': 'Seguimiento', 'piar-actas': 'Actas', 'piar-review': 'Revisión Anual' };
+  const listData = activeSubTab === 'piar-actas' ? students.filter((s:any) => s.is_piar) : piarRecords;
+
+  return (
+    <div className="bg-white p-10 rounded-[2rem] shadow-premium min-h-[500px] animate-fadeIn">
+      <h2 className="text-2xl font-black uppercase italic mb-8 border-b-4 border-school-yellow pb-2 inline-block text-school-green-dark">
+        Anexo: {titles[activeSubTab]}
+      </h2>
+
+      {listData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-20 border-4 border-dashed rounded-[3rem] text-gray-300">
+          <i className="fas fa-user-clock text-5xl mb-4"></i>
+          <p className="font-black uppercase text-xs tracking-[0.2em] text-center">
+            Aún no se han cargado estudiantes para esta sección.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {listData.map((item: any) => (
+            <div key={item.id} className="p-6 bg-gray-50 border-2 border-gray-100 rounded-[2rem] space-y-4 hover:shadow-lg transition-all">
+              <div className="bg-school-green w-10 h-10 rounded-xl flex items-center justify-center text-white"><i className="fas fa-user"></i></div>
+              <p className="font-black text-xs uppercase truncate">{item.name || item.estudiante_nombre}</p>
+              <button className="w-full py-3 rounded-xl font-black text-[9px] uppercase bg-school-yellow text-school-green-dark shadow-md">
+                {activeSubTab === 'piar-actas' ? 'Generar Acta de Acuerdos' : 'Ver Expediente Completo'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default PiarGestor;
