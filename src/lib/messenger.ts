@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 export const sendSiconitccEmail = async (to: string, subject: string, html: string) => {
   try {
     // Sincronizado con el nombre que pusiste en el panel de Supabase
+    // Esta llamada enviará la petición POST a la Edge Function
     const { data, error } = await supabase.functions.invoke('send-email', {
       body: { to, subject, html },
       headers: {
