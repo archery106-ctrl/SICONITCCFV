@@ -42,7 +42,33 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
       window.dispatchEvent(new Event('storage'));
       if (type === 'sede') fetchSedes();
     } catch (err: any) {
-      alert("Error: " + err.message);
+      alert("Error al eliminar: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- FUNCIÓN DE CREACIÓN DE ÁREA CORREGIDA ---
+  const handleCreateArea = async () => {
+    if (!newArea.trim()) return alert("Escriba un nombre para el área");
+    setLoading(true);
+    try {
+      console.log("Intentando crear área:", newArea);
+      const { error } = await supabase
+        .from('areas_academicas')
+        .insert([{ name: newArea.trim() }]);
+
+      if (error) {
+        // Si el error es por duplicado o por RLS, aquí nos dirá
+        throw error;
+      }
+
+      setNewArea('');
+      window.dispatchEvent(new Event('storage'));
+      alert("✅ Área creada con éxito");
+    } catch (err: any) {
+      alert("❌ Error de Supabase: " + err.message);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -53,7 +79,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100">
         <h2 className="text-3xl font-black text-school-green-dark mb-10 uppercase italic">Gestión Institucional</h2>
         
-        {/* SECCIÓN 1: SEDES Y CURSOS */}
+        {/* SEDES Y CURSOS */}
         <div className="mb-12">
           <h3 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest flex items-center gap-2">
             <i className="fas fa-building text-school-green"></i> 1. Sedes y Grados
@@ -72,6 +98,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                 if(!newSede) return;
                 const { error } = await supabase.from('sedes').insert([{ nombre: newSede }]);
                 if(!error) { setNewSede(''); fetchSedes(); }
+                else alert(error.message);
               }} 
               className="bg-school-green text-white px-8 rounded-2xl font-black uppercase text-[10px] shadow-lg"
             >
@@ -101,7 +128,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                   <div className="p-6 bg-white border-t space-y-6">
                     <div className="flex gap-2">
                       <input 
-                        className="flex-grow p-4 border rounded-2xl bg-gray-50 text-xs font-bold outline-none focus:border-school-green" 
+                        className="flex-grow p-4 border rounded-2xl bg-gray-50 text-xs font-bold outline-none" 
                         placeholder="Nuevo Grado (Ej: 601)" 
                         value={newGrade.grade} 
                         onChange={e => setNewGrade({ grade: e.target.value })} 
@@ -114,13 +141,13 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                         }} 
                         className="bg-school-green-dark text-white px-6 rounded-2xl font-black text-[10px] uppercase"
                       >
-                        Añadir Grado
+                        Añadir
                       </button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       {courses.filter(c => c.sede === s).map(c => (
                         <div key={c.id} className="p-3 border rounded-xl flex justify-between items-center bg-white shadow-sm group">
-                          <span className="text-[10px] font-black text-gray-700">{c.grade}</span>
+                          <span className="text-[10px] font-black">{c.grade}</span>
                           <button onClick={() => deleteItem(c.id, 'course')} className="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                             <i className="fas fa-times"></i>
                           </button>
@@ -134,7 +161,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
           </div>
         </div>
 
-        {/* SECCIÓN 2: ÁREAS Y ASIGNATURAS */}
+        {/* ÁREAS Y ASIGNATURAS */}
         <div className="pt-10 border-t">
           <h3 className="text-[10px] font-black text-gray-400 mb-6 uppercase tracking-widest flex items-center gap-2">
             <i className="fas fa-book text-school-green"></i> 2. Estructura Académica
@@ -148,19 +175,16 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
               onChange={e => setNewArea(e.target.value)} 
             />
             <button 
-              onClick={async () => {
-                if(!newArea) return;
-                const { error } = await supabase.from('areas_academicas').insert([{ name: newArea }]);
-                if(!error) { setNewArea(''); window.dispatchEvent(new Event('storage')); }
-              }} 
+              disabled={loading}
+              onClick={handleCreateArea} 
               className="bg-school-green text-white px-8 rounded-2xl font-black uppercase text-[10px] shadow-lg"
             >
-              Crear Área
+              {loading ? 'Procesando...' : 'Crear Área'}
             </button>
           </div>
 
           <div className="space-y-4">
-            {areas.map((a) => (
+            {areas && areas.length > 0 ? areas.map((a) => (
               <div key={a.id} className="border rounded-2xl overflow-hidden bg-gray-50/30">
                 <div className="flex justify-between items-center p-4 bg-gray-50">
                   <span className="font-black text-xs uppercase text-school-green-dark">{a.name}</span>
@@ -181,7 +205,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                   <div className="p-6 bg-white border-t space-y-6">
                     <div className="flex gap-2">
                       <input 
-                        className="flex-grow p-4 border rounded-2xl bg-gray-50 text-xs font-bold outline-none focus:border-school-green" 
+                        className="flex-grow p-4 border rounded-2xl bg-gray-50 text-xs font-bold outline-none" 
                         placeholder="Nombre de la Asignatura..." 
                         value={newSubject.name} 
                         onChange={e => setNewSubject({ name: e.target.value })} 
@@ -191,6 +215,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                           if(!newSubject.name) return;
                           const { error } = await supabase.from('asignaturas').insert([{ name: newSubject.name, area_id: a.id }]);
                           if(!error) { setNewSubject({ name: '' }); window.dispatchEvent(new Event('storage')); }
+                          else alert(error.message);
                         }} 
                         className="bg-school-green-dark text-white px-6 rounded-2xl font-black text-[10px] uppercase"
                       >
@@ -210,7 +235,9 @@ const CourseForm: React.FC<CourseFormProps> = ({ courses, areas, subjects }) => 
                   </div>
                 )}
               </div>
-            ))}
+            )) : (
+              <p className="text-center text-xs font-bold text-gray-400 py-10">No hay áreas creadas aún.</p>
+            )}
           </div>
         </div>
       </div>
