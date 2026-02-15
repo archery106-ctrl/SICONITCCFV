@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Teacher, Course, AcademicArea, Subject } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { sendSiconitccEmail } from '../lib/messenger'; // Importamos tu asistente de correo
+import { sendSiconitccEmail } from '../lib/messenger'; 
 
 interface TeacherFormProps {
   teachers: Teacher[];
@@ -21,7 +21,6 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     grades: [] as string[], isDirector: false, directorGrade: '' 
   });
 
-  // CARGAR SEDES
   useEffect(() => {
     const fetchSedes = async () => {
       const { data } = await supabase.from('sedes').select('nombre');
@@ -30,27 +29,24 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     fetchSedes();
   }, []);
 
-  // Ajustamos el filtro para usar nombre_completo o nombre
   const docentesRegistrados = teachers.filter(t => (t as any).rol === 'docente');
 
   const handleRegisterTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Registro en la tabla de perfiles (Base de datos oficial)
-      // Nota: Aquí registramos sin Auth directo para evitar el correo genérico de Supabase
+      // 1. Registro directo en perfiles_usuarios (El ID se genera solo en SQL)
       const { error: profileError } = await supabase
         .from('perfiles_usuarios')
         .insert([{
-          nombre: reg.name, // Usamos la columna 'nombre' como en Administradores
+          nombre: reg.name,
           email: reg.email,
-          rol: 'docente',
-          // Guardamos la clave temporal si es necesario para tu lógica de login custom
+          rol: 'docente'
         }]);
 
       if (profileError) throw profileError;
 
-      // 2. Envío de Correo de Bienvenida Profesional (Diseño Verde)
+      // 2. Envío de Correo Institucional
       const emailHtml = `
         <div style="font-family: sans-serif; padding: 25px; border: 2px solid #059669; border-radius: 30px; max-width: 500px; background-color: #ffffff;">
           <h2 style="color: #059669; text-transform: uppercase; font-style: italic;">SICONITCC - Acceso Docente</h2>
@@ -59,7 +55,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
             <p style="margin: 5px 0;"><strong>Usuario:</strong> ${reg.email}</p>
             <p style="margin: 5px 0;"><strong>Contraseña Inicial:</strong> ${reg.password}</p>
           </div>
-          <p style="font-size: 13px; color: #374151;">Por favor, ingrese al portal con estas credenciales para gestionar su carga académica.</p>
+          <p style="font-size: 13px; color: #374151;">Ingrese al portal con estas credenciales para gestionar su carga académica.</p>
           <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
           <p style="font-style: italic; color: #6b7280; font-size: 11px; text-align: center;">"Educación con tecnología para una alta calidad humana"</p>
         </div>
@@ -103,7 +99,6 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
     }
     setLoading(true);
     try {
-      // 1. Asignación
       const { error: assignmentError } = await supabase.from('teacher_assignments').insert([{
         docente_id: load.teacherId,
         asignatura_id: load.subjectId,
@@ -114,7 +109,6 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
       }]);
       if (assignmentError) throw assignmentError;
 
-      // 2. Actualizar perfil
       const { error: profileUpdateError } = await supabase
         .from('perfiles_usuarios')
         .update({ grados_asignados: load.grades })
@@ -173,7 +167,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
         </div>
       </div>
 
-      {/* 3. ASIGNACIÓN (Mantenemos tu lógica igual) */}
+      {/* 3. ASIGNACIÓN CARGA */}
       <div className="bg-white p-10 rounded-[3rem] shadow-premium border border-gray-100 space-y-8">
         <h2 className="text-3xl font-black text-school-green-dark uppercase tracking-tight italic">2. Carga Académica y Dirección de Curso</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -185,14 +179,14 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Ubicación (Sede)</label>
+            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Sede</label>
             <select className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={load.sede} onChange={e => setLoad({...load, sede: e.target.value, grades: []})}>
               <option value="">Seleccione Sede...</option>
               {sedes.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Área de Conocimiento</label>
+            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Área</label>
             <select className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={load.areaId} onChange={e => setLoad({...load, areaId: e.target.value})}>
               <option value="">Seleccione Área...</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -200,10 +194,9 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
           </div>
         </div>
 
-        {/* ... (resto del formulario se mantiene igual) ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
           <div className="flex flex-col">
-            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Asignatura Específica</label>
+            <label className="text-[10px] font-black text-school-green-dark uppercase ml-2 mb-1">Asignatura</label>
             <select className="p-4 border rounded-2xl bg-gray-50 font-bold text-xs" value={load.subjectId} disabled={!load.areaId} onChange={e => setLoad({...load, subjectId: e.target.value})}>
               <option value="">Seleccione Asignatura...</option>
               {subjects.filter(s => (s as any).area_id === load.areaId || s.areaId === load.areaId).map(s => (
@@ -225,6 +218,16 @@ const TeacherForm: React.FC<TeacherFormProps> = ({ teachers, setTeachers, course
             )}
           </div>
         </div>
+
+        {load.sede && (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 pt-4">
+            {courses.filter(c => c.sede === load.sede).map(c => (
+              <button key={c.id} onClick={() => toggleGrade(c.grade)} className={`p-3 rounded-xl font-bold text-[10px] border ${load.grades.includes(c.grade) ? 'bg-school-green text-white' : 'bg-gray-50 text-gray-400'}`}>
+                {c.grade}
+              </button>
+            ))}
+          </div>
+        )}
 
         <button 
           onClick={handleAssignLoad} 
